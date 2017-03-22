@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "module": "amd",
+        "noImplicitAny": true,
+        "sourceMap": true,
+        "jsx": "react",
+        "reactNamespace": "jsxFactory",
+        "target": "es5",
+        "experimentalDecorators": true,
+        "preserveConstEnums": true,
+        "suppressImplicitAnyIndexErrors": true
+    },
+    "files": [
+        "./app/main.ts",
+        "./typings.d.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

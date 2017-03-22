@@ -1,0 +1,52 @@
+html,
+body,
+#viewDiv {
+    padding: 0;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.esri-ui:focus {
+    border: 3px solid rgb(94, 158, 214);
+}
+
+.hidden {
+    display: none;
+}
+
+.focus {
+    border: 3px solid rgb(94, 158, 214) !important;
+}
+
+#liveViewInfo {
+    width: 500px;
+    max-height: 100;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 20px;
+    padding: 11px 13px;
+    margin: 0 auto;
+    border: solid 2px #ccc;
+    background: white;
+    z-index: 1;
+    font-size: 15px;
+}
+
+.feature-index {
+    background-color: #ccc;
+    color: #333;
+    padding: 2px 4px;
+    margin-right: 4px;
+    font-weight: bold;
+    min-width: 12px;
+    text-align: center;
+}
+
+.feature-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 3px;
+}
