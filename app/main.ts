@@ -5,7 +5,7 @@ import FeatureLayerView = require("esri/views/layers/FeatureLayerView");
 import Query = require("esri/tasks/support/Query");
 
 import watchUtils = require("esri/core/watchUtils");
-import PausableWatchHandle = __esri.PausableWatchHandle;
+import esri = __esri;
 
 import Graphic = require("esri/Graphic");
 import Color = require("esri/Color");
@@ -15,7 +15,7 @@ import Point = require("esri/geometry/Point");
 import SimpleFillSymbol = require("esri/symbols/SimpleFillSymbol");
 import SimpleLineSymbol = require("esri/symbols/SimpleLineSymbol");
 
-let watchHandler: PausableWatchHandle = null;
+let watchHandler: esri.PausableWatchHandle = null;
 let keyHandler: any = null;
 
 let queryLayer: FeatureLayerView = null;
