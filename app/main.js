@@ -1,12 +1,12 @@
 define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/support/Query", "esri/core/watchUtils", "esri/Graphic", "esri/Color", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/symbols/SimpleLineSymbol"], function (require, exports, WebMap, MapView, Query, watchUtils, Graphic, Color, Extent, SimpleFillSymbol, SimpleLineSymbol) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var watchHandler = null;
-    var keyHandler = null;
-    var queryLayer = null;
-    //  handle pagination of query results 
-    var queryResults = null;
-    var pageResults = null;
+    var watchHandler;
+    var keyHandler;
+    var queryLayer;
+    //  handle pagination of query results
+    var queryResults;
+    var pageResults;
     var currentPage;
     var numberOfPages;
     var numberPerPage = 7;
@@ -20,61 +20,62 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         container: "viewDiv"
     });
     view.then(function () {
-        // Get the first layer in the map to use as the layer to query for features 
-        // that appear within the highlighted graphic  
-        view.whenLayerView(map.layers.getItemAt(0)).then(function (layerView) {
+        // Get the first layer in the map to use as the layer to query for features
+        // that appear within the highlighted graphic
+        view.whenLayerView(map.layers.getItemAt(0))
+            .then(function (layerView) {
             queryLayer = layerView;
         });
-        var uiNode = document.querySelector(".esri-ui");
-        if (uiNode) {
-            uiNode.setAttribute("aria-label", map.portalItem.description);
-            uiNode.setAttribute("tabindex", "0");
-            uiNode.addEventListener("focus", function () {
-                // When the node with the class .esri-ui is focused setup key handler and set focus to 
-                // node with .esri-view-surface class. I think this should work just by setting focus on
-                // .esri-view-surface but was getting odd behavior (Revist this)
-                var liveNode = document.getElementById("liveViewInfo");
-                liveNode.classList.remove("hidden");
-                createGraphic(view);
-                mapFocus();
-                if (!keyHandler) {
-                    keyHandler = view.on("key-down", function (keyEvt) {
-                        if (keyEvt.key <= pageResults.length) {
-                            displayFeatureInfo(keyEvt.key);
+        var uiNode = view.ui.container;
+        uiNode.setAttribute("aria-label", map.portalItem.description);
+        uiNode.setAttribute("tabindex", "0");
+        uiNode.addEventListener("focus", function () {
+            // When the node with the class .esri-ui is focused setup key handler and set focus to
+            // node with .esri-view-surface class. I think this should work just by setting focus on
+            // .esri-view-surface but was getting odd behavior (Revist this)
+            var liveNode = document.getElementById("liveViewInfo");
+            liveNode.classList.remove("hidden");
+            createGraphic(view);
+            mapFocus();
+            if (!keyHandler) {
+                keyHandler = view.on("key-down", function (keyEvt) {
+                    var key = keyEvt.key;
+                    if (key <= pageResults.length) {
+                        displayFeatureInfo(key);
+                    }
+                    else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
+                        currentPage -= 1;
+                        generateList();
+                    }
+                    else if (key === "9" && numberOfPages > 1) {
+                        currentPage += 1;
+                        generateList();
+                    }
+                    else if (key === "ArrowUp" || key === "ArrowDown" ||
+                        key === "ArrowRight" || key === "ArrowLeft") {
+                        var dir = void 0;
+                        switch (key) {
+                            case "ArrowUp":
+                                dir = "north";
+                                break;
+                            case "ArrowDown":
+                                dir = "south";
+                                break;
+                            case "ArrowRight":
+                                dir = "east";
+                                break;
+                            case "ArrowLeft":
+                                dir = "west";
+                                break;
                         }
-                        else if (keyEvt.key === "8" && numberOfPages > 1 && currentPage > 1) {
-                            currentPage -= 1;
-                            generateList();
-                        }
-                        else if (keyEvt.key === "9" && numberOfPages > 1) {
-                            currentPage += 1;
-                            generateList();
-                        }
-                        else if (keyEvt.key === "ArrowUp" || keyEvt.key === "ArrowDown" || keyEvt.key === "ArrowRight" || keyEvt.key === "ArrowLeft") {
-                            var dir = void 0;
-                            switch (keyEvt.key) {
-                                case "ArrowUp":
-                                    dir = "north";
-                                    break;
-                                case "ArrowDown":
-                                    dir = "south";
-                                    break;
-                                case "ArrowRight":
-                                    dir = "east";
-                                    break;
-                                case "ArrowLeft":
-                                    dir = "west";
-                                    break;
-                            }
-                            liveNode.innerHTML = "Moving " + dir;
-                        }
-                    });
-                }
-            });
-        }
+                        liveNode.innerHTML = "Moving " + dir;
+                    }
+                });
+            }
+        });
     });
     function mapFocus() {
-        // Set focus to the map node and add border around map node to show that it's focused. 
+        // Set focus to the map node and add border around map node to show that it's focused.
         var mapNode = document.querySelector(".esri-view-surface");
         mapNode.setAttribute("tabindex", "0");
         mapNode.classList.add("focus");
@@ -91,18 +92,20 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
     }
     function cleanUp() {
         // Clean up the highlight graphic and feature list if the map loses focus and the popup
-        // isn't visible 
-        if (!view.popup.visible) {
-            var mapNode = document.querySelector(".esri-view-surface");
-            mapNode.removeAttribute("tabindex");
-            mapNode.classList.remove("focus");
-            document.getElementById("liveViewInfo").innerHTML = null;
-            document.getElementById("liveViewInfo").classList.add("hidden");
-            view.graphics.removeAll();
-            watchHandler.pause();
-            keyHandler.remove();
-            keyHandler = null;
+        // isn't visible
+        if (view.popup.visible) {
+            return;
         }
+        var mapNode = document.querySelector(".esri-view-surface");
+        mapNode.removeAttribute("tabindex");
+        mapNode.classList.remove("focus");
+        var liveViewInfoNode = document.getElementById("liveViewInfo");
+        liveViewInfoNode.innerHTML = null;
+        liveViewInfoNode.classList.add("hidden");
+        view.graphics.removeAll();
+        watchHandler.pause();
+        keyHandler.remove();
+        keyHandler = null;
     }
     function createGraphic(view) {
         // Add a highlight graphic to the map and use it to navigate/query content
@@ -113,11 +116,12 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
             outline: new SimpleLineSymbol({
                 color: new Color([0, 0, 0, 0.8]),
                 width: 1
-            }),
+            })
         });
         var centerPoint = view.center;
+        // TODO: Need to work on some logic that calculates an appropriate tolerance
         var tolerance = 2000;
-        var ext = new Extent({
+        var extent = new Extent({
             xmin: centerPoint.x - tolerance,
             ymin: centerPoint.y - tolerance,
             xmax: centerPoint.x + tolerance,
@@ -125,7 +129,7 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
             spatialReference: view.center.spatialReference
         });
         var graphic = new Graphic({
-            geometry: ext,
+            geometry: extent,
             symbol: fillSymbol
         });
         view.graphics.add(graphic);
@@ -134,14 +138,16 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         }
     }
     function queryFeatures(queryGraphic) {
-        // Query the feature layer to get the features within the highlighted area 
-        // currently setup for just the first layer in web map 
-        var query = new Query();
+        // Query the feature layer to get the features within the highlighted area
+        // currently setup for just the first layer in web map
+        var query = new Query({
+            geometry: queryGraphic.geometry
+        });
         queryResults = null;
         pageResults = null;
         currentPage = 1;
-        query.geometry = queryGraphic.geometry;
-        queryLayer.queryFeatures(query).then(function (result) {
+        queryLayer.queryFeatures(query)
+            .then(function (result) {
             queryResults = result;
             numberOfPages = Math.ceil(queryResults.length / numberPerPage);
             generateList();
@@ -149,23 +155,19 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
     }
     function updateLiveInfo(displayResults, prev, next) {
         var liveInfo = document.getElementById("liveViewInfo");
-        var updateContent = null;
-        var updateValues = [];
-        if (displayResults && displayResults.length && displayResults.length > 0) {
-            displayResults.forEach(function (graphic, index) {
-                // ES6 Template String 
-                var templateString = "<span class=\"feature-label\"><span class=\"feature-index\">" + (index + 1) + "</span>" + graphic.attributes.NAME + "</span>";
-                updateValues.push(templateString);
+        var updateContent;
+        if (displayResults && displayResults.length > 0) {
+            var updateValues = displayResults.map(function (graphic, index) {
+                // ES6 Template String
+                return "<span class=\"feature-label\"><span class=\"feature-index\">" + (index + 1) + "</span>" + graphic.attributes.NAME + "</span>";
             });
             if (next) {
-                // add 9 to get more features 
-                var templateString = "<span class='feature-label'><span class='feature-index'>9</span>See more results</span>";
-                updateValues.push(templateString);
+                // add 9 to get more features
+                updateValues.push("<span class=\"feature-label\"><span class=\"feature-index\">9</span>See more results</span>");
             }
             if (prev) {
-                // add 8 to go back 
-                var templateString = "<span class='feature-label'><span class='feature-index'>8</span>View previous results</span>";
-                updateValues.push(templateString);
+                // add 8 to go back
+                updateValues.push("<span class=\"feature-label\"><span class=\"feature-index\">8</span>View previous results</span>");
             }
             updateContent = updateValues.join(" ");
         }
@@ -175,30 +177,33 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         liveInfo.innerHTML = updateContent;
     }
     function generateList() {
-        // Generate a page of content for the currently highlighted area 
+        // Generate a page of content for the currently highlighted area
         var begin = ((currentPage - 1) * numberPerPage);
         var end = begin + numberPerPage;
         pageResults = queryResults.slice(begin, end);
-        // Get page status 
-        var prevDisabled = (currentPage === 1) ? true : false; // don't show 8
-        var nextDisabled = (currentPage === numberOfPages) ? true : false; // don't show 9
+        // Get page status
+        var prevDisabled = currentPage === 1; // don't show 8
+        var nextDisabled = currentPage === numberOfPages; // don't show 9
         updateLiveInfo(pageResults, !prevDisabled, !nextDisabled);
     }
     function displayFeatureInfo(key) {
-        // Display the popup for the currently selected feature 
-        // Seems odd that I have to set features, location and open but without 
+        // Display the popup for the currently selected feature
+        // Seems odd that I have to set features, location and open but without
         // popup either wasn't showing or wasn't positioned correctly
         var selectedGraphic = pageResults[key - 1];
         if (selectedGraphic) {
-            view.popup.features = [selectedGraphic];
-            view.popup.location = selectedGraphic.geometry;
-            watchUtils.once(view.popup, "visible", function () {
-                if (view.popup.visible === false) {
-                    // const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
-                    // mapNode.focus();
+            var popup_1 = view.popup;
+            popup_1.set({
+                features: [selectedGraphic],
+                location: selectedGraphic.geometry
+            });
+            watchUtils.once(popup_1, "visible", function () {
+                if (!popup_1.visible) {
+                    var mapNode = document.querySelector(".esri-view-surface");
+                    mapNode.focus();
                 }
             });
-            view.popup.open(view.popup.selectedFeature);
+            popup_1.open(popup_1.selectedFeature);
         }
     }
 });
