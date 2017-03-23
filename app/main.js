@@ -4,7 +4,6 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
     var watchHandler;
     var keyHandler;
     var queryLayer;
-    //  handle pagination of query results
     var queryResults;
     var pageResults;
     var currentPage;
@@ -19,9 +18,11 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         map: map,
         container: "viewDiv"
     });
+    /**
+     * Get the first layer in the map to use as the layer to query for features
+     * that appear within the highlighted graphic
+    */
     view.then(function () {
-        // Get the first layer in the map to use as the layer to query for features
-        // that appear within the highlighted graphic
         view.whenLayerView(map.layers.getItemAt(0))
             .then(function (layerView) {
             queryLayer = layerView;
@@ -30,9 +31,6 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         uiNode.setAttribute("aria-label", map.portalItem.description);
         uiNode.setAttribute("tabindex", "0");
         uiNode.addEventListener("focus", function () {
-            // When the node with the class .esri-ui is focused setup key handler and set focus to
-            // node with .esri-view-surface class. I think this should work just by setting focus on
-            // .esri-view-surface but was getting odd behavior (Revist this)
             var liveNode = document.getElementById("liveViewInfo");
             liveNode.classList.remove("hidden");
             createGraphic(view);
@@ -75,7 +73,6 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         });
     });
     function mapFocus() {
-        // Set focus to the map node and add border around map node to show that it's focused.
         var mapNode = document.querySelector(".esri-view-surface");
         mapNode.setAttribute("tabindex", "0");
         mapNode.classList.add("focus");
@@ -90,9 +87,11 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         }
         mapNode.addEventListener("blur", cleanUp);
     }
+    /**
+     * Clean up the highlight graphic and feature list if the map loses
+     * focus and the popup isn't visible
+     */
     function cleanUp() {
-        // Clean up the highlight graphic and feature list if the map loses focus and the popup
-        // isn't visible
         if (view.popup.visible) {
             return;
         }
@@ -107,8 +106,11 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         keyHandler.remove();
         keyHandler = null;
     }
+    /**
+     *  Add a highlight graphic to the map and use it to navigate/query content
+     * @param view
+     */
     function createGraphic(view) {
-        // Add a highlight graphic to the map and use it to navigate/query content
         view.graphics.removeAll();
         view.popup.visible = false;
         var fillSymbol = new SimpleFillSymbol({
@@ -119,8 +121,7 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
             })
         });
         var centerPoint = view.center;
-        // TODO: Need to work on some logic that calculates an appropriate tolerance
-        var tolerance = 2000;
+        var tolerance = view.scale / 100;
         var extent = new Extent({
             xmin: centerPoint.x - tolerance,
             ymin: centerPoint.y - tolerance,
@@ -137,9 +138,12 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
             queryFeatures(graphic);
         }
     }
+    /**
+     *  Query the feature layer to get the features within the highlighted area
+     * currently setup for just the first layer in web map
+     * @param queryGraphic Extent graphic used drawn on the map and used to sect features
+     */
     function queryFeatures(queryGraphic) {
-        // Query the feature layer to get the features within the highlighted area
-        // currently setup for just the first layer in web map
         var query = new Query({
             geometry: queryGraphic.geometry
         });
@@ -176,8 +180,10 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         }
         liveInfo.innerHTML = updateContent;
     }
+    /**
+     * Generate a page of content for the currently highlighted area
+     */
     function generateList() {
-        // Generate a page of content for the currently highlighted area
         var begin = ((currentPage - 1) * numberPerPage);
         var end = begin + numberPerPage;
         pageResults = queryResults.slice(begin, end);
@@ -186,10 +192,11 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         var nextDisabled = currentPage === numberOfPages; // don't show 9
         updateLiveInfo(pageResults, !prevDisabled, !nextDisabled);
     }
+    /**
+     * Display popup for selected feature
+     * @param key number key pressed to identify selected feature
+     */
     function displayFeatureInfo(key) {
-        // Display the popup for the currently selected feature
-        // Seems odd that I have to set features, location and open but without
-        // popup either wasn't showing or wasn't positioned correctly
         var selectedGraphic = pageResults[key - 1];
         if (selectedGraphic) {
             var popup_1 = view.popup;

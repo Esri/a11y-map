@@ -162,8 +162,7 @@ function createGraphic(view: MapView): void {
         })
     });
     const centerPoint = view.center;
-    // TODO: Need to work on some logic that calculates an appropriate tolerance
-    const tolerance = 2000;
+    const tolerance = view.scale / 100;
     const extent = new Extent({
         xmin: centerPoint.x - tolerance,
         ymin: centerPoint.y - tolerance,
