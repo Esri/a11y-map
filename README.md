@@ -12,6 +12,9 @@ You can access a live version of the app for testing here
 
 [Live App](https://kellyhutchins.github.io/a11y-map/index.html)
 
+Another interesting app that shows navigating content in an accessible manner is Patrick Arlt's demo app available here. 
+[Accessible Search](https://github.com/patrickarlt/accessible-js-api-app)
+
 ## Contributing
 
 Contributons are welcome. Please see the Esri [guidelines for contributing](https://github.com/esri/contributing).
