@@ -10,7 +10,7 @@ To see the a11y features tab into the map. Once you do so you'll see an extent g
 
 You can access a live version of the app for testing here 
 
-[Live App] (https://kellyhutchins.github.io/a11y-map/index.html)
+[Live App](https://kellyhutchins.github.io/a11y-map/index.html)
 
 ## Contributing
 
