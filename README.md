@@ -15,6 +15,11 @@ You can access a live version of the app for testing here
 Another interesting app that shows navigating content in an accessible manner is Patrick Arlt's demo app available here. 
 [Accessible Search](https://github.com/patrickarlt/accessible-js-api-app)
 
+
+## Navigation tips
+
+Tab into the map to activate the extent search and display results. Once in the map you can use the arrow keys to move right, left, up or down in the map. Use - to zoom in and + to zoom out. 
+
 ## Contributing
 
 Contributons are welcome. Please see the Esri [guidelines for contributing](https://github.com/esri/contributing).
