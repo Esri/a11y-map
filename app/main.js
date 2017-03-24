@@ -1,4 +1,4 @@
-define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/support/Query", "esri/core/watchUtils", "esri/Graphic", "esri/Color", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/symbols/SimpleLineSymbol"], function (require, exports, WebMap, MapView, Query, watchUtils, Graphic, Color, Extent, SimpleFillSymbol, SimpleLineSymbol) {
+define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/support/Query", "esri/core/watchUtils", "esri/Graphic", "esri/Color", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/symbols/SimpleLineSymbol", "esri/tasks/Locator"], function (require, exports, WebMap, MapView, Query, watchUtils, Graphic, Color, Extent, SimpleFillSymbol, SimpleLineSymbol, Locator) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var watchHandler;
@@ -8,7 +8,13 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
     var pageResults;
     var currentPage;
     var numberOfPages;
+    var liveNode = document.getElementById("liveViewInfo");
+    var liveDirNode = document.getElementById("dir");
+    var liveDetailsNode = document.getElementById("details");
     var numberPerPage = 7;
+    var locator = new Locator({
+        url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
+    });
     var map = new WebMap({
         portalItem: {
             id: "7eca81856e22478da183da6a33c24dfe"
@@ -31,15 +37,22 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         uiNode.setAttribute("aria-label", map.portalItem.description);
         uiNode.setAttribute("tabindex", "0");
         uiNode.addEventListener("focus", function () {
-            var liveNode = document.getElementById("liveViewInfo");
             liveNode.classList.remove("hidden");
             createGraphic(view);
             mapFocus();
             if (!keyHandler) {
                 keyHandler = view.on("key-down", function (keyEvt) {
                     var key = keyEvt.key;
-                    if (key <= pageResults.length) {
+                    if (pageResults && pageResults.length && key <= pageResults.length) {
                         displayFeatureInfo(key);
+                    }
+                    else if (key === "i") {
+                        // reverse geocode and display location information
+                        var loc = view.graphics.getItemAt(0).geometry.center;
+                        locator.locationToAddress(loc, 1000).then(function (candidate) {
+                            var address = candidate.address;
+                            liveDirNode.innerHTML = "Near " + address.Match_addr;
+                        });
                     }
                     else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
                         currentPage -= 1;
@@ -66,7 +79,7 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
                                 dir = "west";
                                 break;
                         }
-                        liveNode.innerHTML = "Moving " + dir;
+                        liveDirNode.innerHTML = "Moving " + dir + " <b>i</b> for more info";
                     }
                 });
             }
@@ -98,9 +111,9 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         var mapNode = document.querySelector(".esri-view-surface");
         mapNode.removeAttribute("tabindex");
         mapNode.classList.remove("focus");
-        var liveViewInfoNode = document.getElementById("liveViewInfo");
-        liveViewInfoNode.innerHTML = null;
-        liveViewInfoNode.classList.add("hidden");
+        liveNode.classList.add("hidden");
+        liveDetailsNode.innerHTML = null;
+        liveDirNode.innerHTML = null;
         view.graphics.removeAll();
         watchHandler.pause();
         keyHandler.remove();
@@ -121,7 +134,7 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
             })
         });
         var centerPoint = view.center;
-        var tolerance = view.scale / 100;
+        var tolerance = view.scale / 60;
         var extent = new Extent({
             xmin: centerPoint.x - tolerance,
             ymin: centerPoint.y - tolerance,
@@ -158,7 +171,6 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         });
     }
     function updateLiveInfo(displayResults, prev, next) {
-        var liveInfo = document.getElementById("liveViewInfo");
         var updateContent;
         if (displayResults && displayResults.length > 0) {
             var updateValues = displayResults.map(function (graphic, index) {
@@ -178,7 +190,7 @@ define(["require", "exports", "esri/WebMap", "esri/views/MapView", "esri/tasks/s
         else {
             updateContent = "No results found in highlight area";
         }
-        liveInfo.innerHTML = updateContent;
+        liveDetailsNode.innerHTML = updateContent;
     }
     /**
      * Generate a page of content for the currently highlighted area

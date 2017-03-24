@@ -21,14 +21,13 @@ body,
 
 #liveViewInfo {
     width: 500px;
-    max-height: 100px;
+    height: auto;
     position: absolute;
     left: 0;
     right: 0;
     bottom: 20px;
     padding: 11px 13px;
     margin: 0 auto;
-    border: solid 2px #ccc;
     background: white;
     z-index: 1;
     font-size: 15px;
@@ -49,4 +48,16 @@ body,
     text-overflow: ellipsis;
     white-space: nowrap;
     padding-right: 3px;
+}
+
+.detail-info {
+    width: 100%;
+    margin-bottom: 1em;
+}
+
+.directions-info {
+    position: absolute;
+    bottom: 0;
+    right: 3px;
+    font-style: italic;
 }

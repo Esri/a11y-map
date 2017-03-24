@@ -15,6 +15,8 @@ import Point = require("esri/geometry/Point");
 import SimpleFillSymbol = require("esri/symbols/SimpleFillSymbol");
 import SimpleLineSymbol = require("esri/symbols/SimpleLineSymbol");
 
+import Locator = require("esri/tasks/Locator");
+
 let watchHandler: esri.PausableWatchHandle;
 let keyHandler: any;
 
@@ -25,7 +27,16 @@ let pageResults: Graphic[];
 
 let currentPage: number;
 let numberOfPages: number;
+
+const liveNode = document.getElementById("liveViewInfo");
+const liveDirNode = document.getElementById("dir");
+const liveDetailsNode = document.getElementById("details");
+
 const numberPerPage: number = 7;
+
+const locator = new Locator({
+    url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
+});
 
 const map = new WebMap({
     portalItem: {
@@ -56,7 +67,6 @@ view.then(() => {
 
     uiNode.addEventListener("focus", () => {
 
-        const liveNode = document.getElementById("liveViewInfo");
         liveNode.classList.remove("hidden");
         createGraphic(view);
         mapFocus();
@@ -65,8 +75,16 @@ view.then(() => {
             keyHandler = view.on("key-down", (keyEvt: any) => {
                 const key = keyEvt.key;
 
-                if (key <= pageResults.length) {
+                if (pageResults && pageResults.length && key <= pageResults.length) {
                     displayFeatureInfo(key);
+                }
+                else if (key === "i") {
+                    // reverse geocode and display location information
+                    let loc = view.graphics.getItemAt(0).geometry.center;
+                    locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
+                        const address: any = candidate.address;
+                        liveDirNode.innerHTML = `Near ${address.Match_addr}`;
+                    });
                 }
 
                 // not on the first page and more than one page
@@ -100,9 +118,10 @@ view.then(() => {
                             dir = "west";
                             break;
                     }
-
-                    liveNode.innerHTML = `Moving ${dir}`;
+                    liveDirNode.innerHTML = `Moving ${dir} <b>i</b> for more info`;
                 }
+
+
             });
         }
     });
@@ -137,9 +156,10 @@ function cleanUp(): void {
     const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
     mapNode.removeAttribute("tabindex");
     mapNode.classList.remove("focus");
-    const liveViewInfoNode = document.getElementById("liveViewInfo");
-    liveViewInfoNode.innerHTML = null;
-    liveViewInfoNode.classList.add("hidden");
+
+    liveNode.classList.add("hidden");
+    liveDetailsNode.innerHTML = null;
+    liveDirNode.innerHTML = null;
     view.graphics.removeAll();
     watchHandler.pause();
     keyHandler.remove();
@@ -162,7 +182,7 @@ function createGraphic(view: MapView): void {
         })
     });
     const centerPoint = view.center;
-    const tolerance = view.scale / 100;
+    const tolerance = view.scale / 60;
     const extent = new Extent({
         xmin: centerPoint.x - tolerance,
         ymin: centerPoint.y - tolerance,
@@ -203,7 +223,6 @@ function queryFeatures(queryGraphic: Graphic): void {
 }
 
 function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean): void {
-    let liveInfo: HTMLDivElement = <HTMLDivElement>document.getElementById("liveViewInfo");
     let updateContent: string;
 
     if (displayResults && displayResults.length > 0) {
@@ -231,8 +250,7 @@ function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean)
     else {
         updateContent = "No results found in highlight area";
     }
-
-    liveInfo.innerHTML = updateContent;
+    liveDetailsNode.innerHTML = updateContent;
 }
 /**
  * Generate a page of content for the currently highlighted area
