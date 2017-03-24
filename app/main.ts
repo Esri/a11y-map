@@ -1,11 +1,12 @@
 import WebMap = require("esri/WebMap");
+import urlUtils = require("esri/core/urlUtils");
+
 import MapView = require("esri/views/MapView");
 import FeatureLayer = require("esri/layers/FeatureLayer");
 import FeatureLayerView = require("esri/views/layers/FeatureLayerView");
 import Query = require("esri/tasks/support/Query");
 
 import watchUtils = require("esri/core/watchUtils");
-import esri = __esri;
 
 import Graphic = require("esri/Graphic");
 import Color = require("esri/Color");
@@ -15,12 +16,18 @@ import Point = require("esri/geometry/Point");
 import SimpleFillSymbol = require("esri/symbols/SimpleFillSymbol");
 import SimpleLineSymbol = require("esri/symbols/SimpleLineSymbol");
 
-import Locator = require("esri/tasks/Locator");
+import Search = require("esri/widgets/Search");
+import Home = require("esri/widgets/Home");
+
+import esri = __esri;
 
 let watchHandler: esri.PausableWatchHandle;
-let keyHandler: any;
+let keyDownHandler: any;
+let keyUpHandler: any;
 
 let queryLayer: FeatureLayerView;
+let displayField: string;
+let webmapId = "7eca81856e22478da183da6a33c24dfe";
 
 let queryResults: Graphic[];
 let pageResults: Graphic[];
@@ -34,13 +41,15 @@ const liveDetailsNode = document.getElementById("details");
 
 const numberPerPage: number = 7;
 
-const locator = new Locator({
-    url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
-});
+
+const urlObject = urlUtils.urlToObject(document.location.href);
+if (urlObject.query && urlObject.query.webmap) {
+    webmapId = urlObject.query.webmap;
+}
 
 const map = new WebMap({
     portalItem: {
-        id: "7eca81856e22478da183da6a33c24dfe"
+        id: webmapId
     }
 });
 
@@ -49,7 +58,23 @@ const view = new MapView({
     container: "viewDiv"
 });
 
-
+const searchWidget = new Search({
+    view: view,
+    popupEnabled: false,
+    popupOpenOnSelect: false,
+    autoSelect: true
+});
+const homeWidget = new Home({
+    view: view
+});
+view.ui.add(searchWidget, {
+    position: "top-right"
+});
+view.ui.add(homeWidget, {
+    position: "top-left"
+});
+const worldLocator: esri.LocatorSource = searchWidget.sources.getItemAt(0);
+worldLocator.localSearchOptions.distance = 1000;
 /** 
  * Get the first layer in the map to use as the layer to query for features
  * that appear within the highlighted graphic
@@ -58,73 +83,86 @@ view.then(() => {
     view.whenLayerView(map.layers.getItemAt(0))
         .then(layerView => {
             queryLayer = layerView;
-        });
-
-    const uiNode: HTMLDivElement = view.ui.container;
-
-    uiNode.setAttribute("aria-label", map.portalItem.description);
-    uiNode.setAttribute("tabindex", "0");
-
-    uiNode.addEventListener("focus", () => {
-
-        liveNode.classList.remove("hidden");
-        createGraphic(view);
-        mapFocus();
-
-        if (!keyHandler) {
-            keyHandler = view.on("key-down", (keyEvt: any) => {
-                const key = keyEvt.key;
-
-                if (pageResults && pageResults.length && key <= pageResults.length) {
-                    displayFeatureInfo(key);
+            const l: FeatureLayer = <FeatureLayer>queryLayer.layer;
+            l.fields.some((field: any) => {
+                if (field.type === "string") {
+                    displayField = field.name;
+                    return true;
                 }
-                else if (key === "i") {
-                    // reverse geocode and display location information
-                    let loc = view.graphics.getItemAt(0).geometry.center;
-                    locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
-                        const address: any = candidate.address;
-                        liveDirNode.innerHTML = `Near ${address.Match_addr}`;
+            });
+
+            const uiNode: HTMLDivElement = view.ui.container;
+
+
+            uiNode.setAttribute("aria-label", map.portalItem.description);
+            uiNode.setAttribute("tabindex", "0");
+
+            uiNode.addEventListener("focus", () => {
+
+                liveNode.classList.remove("hidden");
+                createGraphic(view);
+                mapFocus();
+                if (!keyUpHandler) {
+                    /**
+                     * Handle numeric nav keys 
+                     */
+                    keyUpHandler = view.on("key-up", (keyEvt: any) => {
+                        const key = keyEvt.key;
+                        if (pageResults && pageResults.length && key <= pageResults.length) {
+                            displayFeatureInfo(key);
+                        }
+                        // not on the first page and more than one page
+                        else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
+                            currentPage -= 1;
+                            generateList();
+                        }
+
+                        // we have more than one page
+                        else if (key === "9" && numberOfPages > 1) {
+                            currentPage += 1;
+                            generateList();
+                        }
                     });
                 }
+                if (!keyDownHandler) {
+                    /**
+                     * Handle info and dir keys 
+                     */
+                    keyDownHandler = view.on("key-down", (keyEvt: any) => {
+                        const key = keyEvt.key;
+                        if (key === "i") {
+                            // reverse geocode and display location information
+                            let loc = view.graphics.getItemAt(0).geometry.center;
+                            worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
+                                calculateLocation(candidate.address);
+                            });
+                        }
+                        else if (key === "ArrowUp" || key === "ArrowDown" ||
+                            key === "ArrowRight" || key === "ArrowLeft") {
 
-                // not on the first page and more than one page
-                else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
-                    currentPage -= 1;
-                    generateList();
+                            let dir: "north" | "south" | "east" | "west";
+
+                            switch (key) {
+                                case "ArrowUp":
+                                    dir = "north";
+                                    break;
+                                case "ArrowDown":
+                                    dir = "south";
+                                    break;
+                                case "ArrowRight":
+                                    dir = "east";
+                                    break;
+                                case "ArrowLeft":
+                                    dir = "west";
+                                    break;
+                            }
+                            liveDirNode.innerHTML = `Moving ${dir} <b>i</b> for more info`;
+                        }
+                    });
                 }
-
-                // we have more than one page
-                else if (key === "9" && numberOfPages > 1) {
-                    currentPage += 1;
-                    generateList();
-                }
-
-                else if (key === "ArrowUp" || key === "ArrowDown" ||
-                    key === "ArrowRight" || key === "ArrowLeft") {
-
-                    let dir: "north" | "south" | "east" | "west";
-
-                    switch (key) {
-                        case "ArrowUp":
-                            dir = "north";
-                            break;
-                        case "ArrowDown":
-                            dir = "south";
-                            break;
-                        case "ArrowRight":
-                            dir = "east";
-                            break;
-                        case "ArrowLeft":
-                            dir = "west";
-                            break;
-                    }
-                    liveDirNode.innerHTML = `Moving ${dir} <b>i</b> for more info`;
-                }
-
-
             });
-        }
-    });
+
+        });
 });
 
 function mapFocus(): void {
@@ -162,8 +200,10 @@ function cleanUp(): void {
     liveDirNode.innerHTML = null;
     view.graphics.removeAll();
     watchHandler.pause();
-    keyHandler.remove();
-    keyHandler = null;
+    keyDownHandler.remove();
+    keyUpHandler.remove();
+    keyUpHandler = null;
+    keyDownHandler = null;
 }
 
 /**
@@ -218,7 +258,13 @@ function queryFeatures(queryGraphic: Graphic): void {
         .then(result => {
             queryResults = result;
             numberOfPages = Math.ceil(queryResults.length / numberPerPage);
-            generateList();
+            if (queryResults && queryResults.length && queryResults.length > 21) {
+                // lots of results zoom to reduce # of features 
+                liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Use + to zoom in and reduce # of reuslts";
+            } else {
+                generateList();
+            }
+
         });
 }
 
@@ -228,7 +274,8 @@ function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean)
     if (displayResults && displayResults.length > 0) {
         let updateValues: string[] = displayResults.map((graphic: Graphic, index: number) => {
             // ES6 Template String
-            return `<span class="feature-label"><span class="feature-index">${index + 1}</span>${graphic.attributes.NAME}</span>`;
+            const attr = graphic.attributes[displayField];
+            return `<span class="feature-label"><span class="feature-index">${index + 1}</span>${attr}</span>`;
         });
 
         if (next) {
@@ -286,11 +333,31 @@ function displayFeatureInfo(key: number): void {
 
         watchUtils.once(popup, "visible", () => {
             if (!popup.visible) {
+                console.log("Popup visible", popup.visible);
+                console.log("HEre we go");
                 const mapNode = <HTMLDivElement>document.querySelector(".esri-view-surface");
                 mapNode.focus();
             }
         });
-
         popup.open(popup.selectedFeature);
     }
+}
+function calculateLocation(address: any) {
+    let displayValue;
+    if (view.scale > 12000000) {
+        displayValue = address.CountryCode || address.Subregion;
+    }
+    else if (view.scale > 3000000) {
+        displayValue = address.Region || address.Subregion;
+    }
+    else if (view.scale > 160000) {
+        displayValue = address.City || address.Region || address.Subregion;
+    }
+    else if (view.scale > 40000) {
+        displayValue = address.Neighborhood || address.Address;
+    }
+    else {
+        displayValue = address.Match_addr || address.Address;
+    }
+    liveDirNode.innerHTML = `${displayValue}`;
 }

@@ -7,7 +7,7 @@ body,
     width: 100%;
 }
 
-.esri-ui:focus {
+.esri-view-surface:focus {
     border: 3px solid rgb(94, 158, 214);
 }
 
@@ -15,18 +15,13 @@ body,
     display: none;
 }
 
-.focus {
-    border: 3px solid rgb(94, 158, 214) !important;
-}
-
-#liveViewInfo {
+.live-info {
     width: 500px;
     height: auto;
     position: absolute;
     left: 0;
     right: 0;
     bottom: 20px;
-    padding: 11px 13px;
     margin: 0 auto;
     background: white;
     z-index: 1;
@@ -34,7 +29,7 @@ body,
 }
 
 .feature-index {
-    background-color: #ccc;
+    background-color: #d3d3d3;
     color: #333;
     padding: 2px 4px;
     margin-right: 4px;
@@ -51,7 +46,8 @@ body,
 }
 
 .detail-info {
-    width: 100%;
+    padding: 13px 11px;
+    line-height: 1.5em;
     margin-bottom: 1em;
 }
 
@@ -59,5 +55,5 @@ body,
     position: absolute;
     bottom: 0;
     right: 3px;
-    font-style: italic;
+    color: #4d4d4d;
 }
