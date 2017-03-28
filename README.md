@@ -1,5 +1,5 @@
 # a11y-map
-A prototype app to test using Google's a11y map behavior with Esri's ArcGIS API for JavaScript version 4. 
+A prototype app to test adding keyboard interaction (similar to Google's a11y behavior)with Esri's ArcGIS API for JavaScript version 4. 
 
 ## Purpose 
 Use as a starting point to discusss ways to handle map accessiblity. 
