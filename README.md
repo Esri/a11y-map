@@ -18,7 +18,7 @@ Another interesting app that shows navigating content in an accessible manner is
 
 ## Navigation tips
 
-Tab into the map to activate the extent search and display results. Once in the map you can use the arrow keys to move right, left, up or down in the map. Use - to zoom in and + to zoom out. 
+Tab into the map to activate the extent search and display results. Once in the map you can use the arrow keys to move right, left, up or down in the map. Use - to zoom in and + to zoom out. While the location dialog is active press i for more details about the area. Under the hood pressing i does a reverse geocode to find the address for the center of the query box. 
 
 ## Contributing
 
