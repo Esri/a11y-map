@@ -14,6 +14,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var liveNode = document.getElementById("liveViewInfo");
     var liveDirNode = document.getElementById("dir");
     var liveDetailsNode = document.getElementById("details");
+    var livePopup = document.getElementById("livePopup");
     var numberPerPage = 7;
     var urlObject = urlUtils.urlToObject(document.location.href);
     if (urlObject.query && urlObject.query.webmap) {
@@ -263,15 +264,18 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 features: [selectedGraphic],
                 location: selectedGraphic.geometry
             });
+            livePopup.innerHTML = "Displaying info for feature " + key;
+            popup_1.open(popup_1.selectedFeature);
+            popup_1.container.setAttribute("tabindex", "0");
+            var popupNode = document.querySelector(".esri-popup__position-container");
+            popupNode.setAttribute("tabindex", "0");
+            popupNode.focus();
             watchUtils.once(popup_1, "visible", function () {
                 if (!popup_1.visible) {
-                    console.log("Popup visible", popup_1.visible);
-                    console.log("HEre we go");
                     var mapNode = document.querySelector(".esri-view-surface");
                     mapNode.focus();
                 }
             });
-            popup_1.open(popup_1.selectedFeature);
         }
     }
     function calculateLocation(address) {

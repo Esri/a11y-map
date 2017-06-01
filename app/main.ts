@@ -38,6 +38,7 @@ let numberOfPages: number;
 const liveNode = document.getElementById("liveViewInfo");
 const liveDirNode = document.getElementById("dir");
 const liveDetailsNode = document.getElementById("details");
+const livePopup = document.getElementById("livePopup");
 
 const numberPerPage: number = 7;
 
@@ -331,15 +332,20 @@ function displayFeatureInfo(key: number): void {
             location: selectedGraphic.geometry
         });
 
+
+
+        livePopup.innerHTML = "Displaying info for feature " + key;
+        popup.open(popup.selectedFeature);
+        popup.container.setAttribute("tabindex", "0");
+        var popupNode = <HTMLDivElement>document.querySelector(".esri-popup__position-container");
+        popupNode.setAttribute("tabindex", "0");
+        popupNode.focus();
         watchUtils.once(popup, "visible", () => {
             if (!popup.visible) {
-                console.log("Popup visible", popup.visible);
-                console.log("HEre we go");
                 const mapNode = <HTMLDivElement>document.querySelector(".esri-view-surface");
                 mapNode.focus();
             }
         });
-        popup.open(popup.selectedFeature);
     }
 }
 function calculateLocation(address: any) {

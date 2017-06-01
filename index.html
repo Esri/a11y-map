@@ -22,7 +22,8 @@
 
 <body>
     <div role="main" id="viewDiv">
-        <div id="liveViewInfo" aria-live="polite" role="navigation" class="hidden live-info">
+        <div id="livePopup" aria-live="assertive" aria-atomic="true" style="position: absolute; top: -1000px; height: 1px; overflow: hidden;"></div>
+        <div id="liveViewInfo" aria-live="polite" aria-atomic="true" aria-relevant="additions text" role="navigation" class="hidden live-info">
             <div id="dir" class="directions-info"></div>
             <div id="details" class="detail-info"></div>
         </div>
