@@ -1,59 +1,60 @@
-html,
-body,
-#viewDiv {
-    padding: 0;
-    margin: 0;
-    height: 100%;
-    width: 100%;
-}
+    html,
+    body,
+    #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+    }
 
-.esri-view-surface:focus {
-    border: 3px solid rgb(94, 158, 214);
-}
+    .esri-view-surface:focus {
+        border: 2px solid rgb(94, 158, 214);
+    }
 
-.hidden {
-    display: none;
-}
+    .hidden {
+        display: none;
+    }
 
-.live-info {
-    width: 500px;
-    height: auto;
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 20px;
-    margin: 0 auto;
-    background: white;
-    z-index: 1;
-    font-size: 15px;
-}
+    .live-info {
+        width: 500px;
+        height: auto;
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 20px;
+        margin: 0 auto;
+        background: white;
+        z-index: 1;
+        font-size: 15px;
+    }
 
-.feature-index {
-    background-color: #d3d3d3;
-    color: #333;
-    padding: 2px 4px;
-    margin-right: 4px;
-    font-weight: bold;
-    min-width: 12px;
-    text-align: center;
-}
+    .feature-index {
+        background-color: #d3d3d3;
+        color: #333;
+        padding: 2px 4px;
+        margin-right: 4px;
+        font-weight: bold;
+        min-width: 12px;
+        text-align: center;
+    }
 
-.feature-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding-right: 3px;
-}
+    .feature-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding-right: 3px;
+    }
 
-.detail-info {
-    padding: 13px 11px;
-    line-height: 1.5em;
-    margin-bottom: 1em;
-}
+    .detail-info {
+        padding: 13px 11px;
+        line-height: 1.5em;
+        margin-bottom: 1em;
+    }
 
-.directions-info {
-    position: absolute;
-    bottom: 0;
-    right: 3px;
-    color: #4d4d4d;
-}
+    .directions-info {
+        position: absolute;
+        bottom: 0;
+        right: 3px;
+        color: #4d4d4d;
+    }

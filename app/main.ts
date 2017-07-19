@@ -22,8 +22,8 @@ import Home = require("esri/widgets/Home");
 import esri = __esri;
 
 let watchHandler: esri.PausableWatchHandle;
-let keyDownHandler: any;
-let keyUpHandler: any;
+let keyDownHandler: IHandle;
+let keyUpHandler: IHandle;
 
 let queryLayer: FeatureLayerView;
 let displayField: string;
@@ -38,7 +38,6 @@ let numberOfPages: number;
 const liveNode = document.getElementById("liveViewInfo");
 const liveDirNode = document.getElementById("dir");
 const liveDetailsNode = document.getElementById("details");
-const livePopup = document.getElementById("livePopup");
 
 const numberPerPage: number = 7;
 
@@ -74,8 +73,10 @@ view.ui.add(searchWidget, {
 view.ui.add(homeWidget, {
     position: "top-left"
 });
-const worldLocator: esri.LocatorSource = searchWidget.sources.getItemAt(0);
-worldLocator.localSearchOptions.distance = 1000;
+
+// Only search locally within the view extent 
+searchWidget.sources.getItemAt(0).withinViewEnabled = true;
+
 /** 
  * Get the first layer in the map to use as the layer to query for features
  * that appear within the highlighted graphic
@@ -91,23 +92,45 @@ view.then(() => {
                     return true;
                 }
             });
+            window.addEventListener("mousedown", (keyEvt: any) => {
+                // Don't show the feature list unless tab is pressed. 
+                // prevent default for text box so search works
+                if (keyEvt.key !== "Tab") {
+                    if (keyEvt.target.type !== "text") {
+                        keyEvt.preventDefault();
+                        if (mapNode) {
+                            mapNode.blur();
+                        }
+                    }
+                }
+            });
+            const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
 
-            const uiNode: HTMLDivElement = view.ui.container;
+            mapNode.setAttribute("tabindex", "0");
+            mapNode.setAttribute("aria-label", map.portalItem.description);
+            mapNode.addEventListener("blur", cleanUp);
 
+            mapNode.addEventListener("focus", () => {
 
-            uiNode.setAttribute("aria-label", map.portalItem.description);
-            uiNode.setAttribute("tabindex", "0");
-
-            uiNode.addEventListener("focus", () => {
-
+                console.log("Focus");
                 liveNode.classList.remove("hidden");
+                mapNode.classList.add("focus");
+                // mapNode.focus();
                 createGraphic(view);
-                mapFocus();
+                if (!watchHandler) {
+                    watchHandler = watchUtils.pausable(view, "extent", () => {
+                        createGraphic(view);
+                    });
+                }
+                else {
+                    watchHandler.resume();
+                }
                 if (!keyUpHandler) {
                     /**
                      * Handle numeric nav keys 
                      */
                     keyUpHandler = view.on("key-up", (keyEvt: any) => {
+
                         const key = keyEvt.key;
                         if (pageResults && pageResults.length && key <= pageResults.length) {
                             displayFeatureInfo(key);
@@ -129,18 +152,21 @@ view.then(() => {
                     /**
                      * Handle info and dir keys 
                      */
+
                     keyDownHandler = view.on("key-down", (keyEvt: any) => {
                         const key = keyEvt.key;
+
                         if (key === "i") {
                             // reverse geocode and display location information
                             let loc = view.graphics.getItemAt(0).geometry.center;
+                            const worldLocator = searchWidget.sources.getItemAt(0);
+                            console.log("Locator", worldLocator);
                             worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
-                                calculateLocation(candidate.address);
+                                console.log("Candidate", candidate);
+                                calculateLocation(candidate.attributes);
                             });
-                        }
-                        else if (key === "ArrowUp" || key === "ArrowDown" ||
+                        } else if (key === "ArrowUp" || key === "ArrowDown" ||
                             key === "ArrowRight" || key === "ArrowLeft") {
-
                             let dir: "north" | "south" | "east" | "west";
 
                             switch (key) {
@@ -166,47 +192,36 @@ view.then(() => {
         });
 });
 
-function mapFocus(): void {
-    const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
-    mapNode.setAttribute("tabindex", "0");
-    mapNode.classList.add("focus");
-    mapNode.focus();
-
-    if (!watchHandler) {
-        watchHandler = watchUtils.pausable(view, "extent", () => {
-            createGraphic(view);
-        });
-    }
-    else {
-        watchHandler.resume();
-    }
-
-    mapNode.addEventListener("blur", cleanUp);
-}
-
 /**
  * Clean up the highlight graphic and feature list if the map loses 
  * focus and the popup isn't visible
  */
 function cleanUp(): void {
+
     if (view.popup.visible) {
         return;
     }
+
     const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
-    mapNode.removeAttribute("tabindex");
+
+    mapNode.blur();
     mapNode.classList.remove("focus");
 
     liveNode.classList.add("hidden");
+
     liveDetailsNode.innerHTML = null;
     liveDirNode.innerHTML = null;
     view.graphics.removeAll();
     watchHandler.pause();
-    keyDownHandler.remove();
-    keyUpHandler.remove();
-    keyUpHandler = null;
-    keyDownHandler = null;
+    if (keyDownHandler) {
+        keyDownHandler.remove();
+        keyDownHandler = null;
+    }
+    if (keyUpHandler) {
+        keyUpHandler.remove();
+        keyUpHandler = null;
+    }
 }
-
 /**
  *  Add a highlight graphic to the map and use it to navigate/query content
  * @param view  
@@ -332,10 +347,9 @@ function displayFeatureInfo(key: number): void {
             location: selectedGraphic.geometry
         });
 
-
-
-        livePopup.innerHTML = "Displaying info for feature " + key;
-        popup.open(popup.selectedFeature);
+        popup.open({
+            features: [popup.selectedFeature]
+        });
         popup.container.setAttribute("tabindex", "0");
         var popupNode = <HTMLDivElement>document.querySelector(".esri-popup__position-container");
         popupNode.setAttribute("tabindex", "0");
@@ -349,6 +363,7 @@ function displayFeatureInfo(key: number): void {
     }
 }
 function calculateLocation(address: any) {
+
     let displayValue;
     if (view.scale > 12000000) {
         displayValue = address.CountryCode || address.Subregion;
@@ -365,5 +380,5 @@ function calculateLocation(address: any) {
     else {
         displayValue = address.Match_addr || address.Address;
     }
-    liveDirNode.innerHTML = `${displayValue}`;
+    liveDirNode.innerHTML = `Inspected area is near ${displayValue}`;
 }
