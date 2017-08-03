@@ -127,6 +127,8 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                         var worldLocator = searchWidget.sources.getItemAt(0);
                         worldLocator.locator.locationToAddress(loc, 1000).then(function (candidate) {
                             calculateLocation(candidate.attributes);
+                        }, function (err) {
+                            liveDirNode.innerHTML = "Unable to calculate location";
                         });
                     }
                     else if (key === "ArrowUp" || key === "ArrowDown" ||

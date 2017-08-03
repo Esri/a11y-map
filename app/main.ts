@@ -163,13 +163,14 @@ view.then(() => {
 
             keyDownHandler = view.on("key-down", (keyEvt: any) => {
                 const key = keyEvt.key;
-
                 if (key === "i") {
                     // reverse geocode and display location information
                     let loc = view.graphics.getItemAt(0).geometry.center;
                     const worldLocator = searchWidget.sources.getItemAt(0);
                     worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
                         calculateLocation(candidate.attributes);
+                    }, (err: Error) => {
+                        liveDirNode.innerHTML = "Unable to calculate location";
                     });
                 } else if (key === "ArrowUp" || key === "ArrowDown" ||
                     key === "ArrowRight" || key === "ArrowLeft") {
