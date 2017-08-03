@@ -55,14 +55,16 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             if (result.layerView.layer.type === "feature") {
                 var l = result.layer;
                 if (l.popupEnabled) {
-                    l.fields.some(function (field) {
-                        if (field.type === "string") {
-                            result.layerView["displayField"] = field.name;
-                            return true;
-                        }
-                    });
                     queryLayers.push(result.layerView);
                 }
+            }
+            else if (result.layerView.layer.type === "map-image") {
+                var mapImageLayer = result.layerView.layer;
+                mapImageLayer.sublayers.forEach(function (layer) {
+                    if (layer.popupTemplate) {
+                        queryLayers.push(layer);
+                    }
+                });
             }
         });
         window.addEventListener("mousedown", function (keyEvt) {
@@ -221,9 +223,16 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         pageResults = null;
         currentPage = 1;
         promiseUtils.eachAlways(queryLayers.map(function (layerView) {
+            if (layerView.layer.type && layerView.layer.type === "map-image") {
+                query.returnGeometry = true;
+                query.outFields = ["*"];
+            }
             return layerView.queryFeatures(query).then(function (queryResults) {
                 if (queryResults && queryResults.length && queryResults.length > 0) {
                     return queryResults;
+                }
+                else if (queryResults.features && queryResults.features.length && queryResults.features.length > 0) {
+                    return queryResults.features;
                 }
             });
         })).then(function (results) {

@@ -4,6 +4,7 @@ import urlUtils = require("esri/core/urlUtils");
 import MapView = require("esri/views/MapView");
 import FeatureLayer = require("esri/layers/FeatureLayer");
 import FeatureLayerView = require("esri/views/layers/FeatureLayerView");
+import MapImageLayer = require("esri/layers/MapImageLayer");
 import Query = require("esri/tasks/support/Query");
 
 import watchUtils = require("esri/core/watchUtils");
@@ -89,14 +90,15 @@ view.then(() => {
         if (result.layerView.layer.type === "feature") {
             const l: FeatureLayer = <FeatureLayer>result.layer;
             if (l.popupEnabled) {
-                l.fields.some((field: any) => {
-                    if (field.type === "string") {
-                        result.layerView["displayField"] = field.name;
-                        return true;
-                    }
-                });
                 queryLayers.push(result.layerView as FeatureLayerView);
             }
+        } else if (result.layerView.layer.type === "map-image") {
+            const mapImageLayer = result.layerView.layer as MapImageLayer;
+            mapImageLayer.sublayers.forEach(layer => {
+                if (layer.popupTemplate) {
+                    queryLayers.push(layer);
+                }
+            });
         }
 
     });
@@ -270,15 +272,21 @@ function queryFeatures(queryGraphic: Graphic): void {
     const query = new Query({
         geometry: queryGraphic.geometry
     });
+
     queryResults = [];
     pageResults = null;
     currentPage = 1;
 
-
     promiseUtils.eachAlways(queryLayers.map((layerView: FeatureLayerView) => {
+        if (layerView.layer.type && layerView.layer.type === "map-image") {
+            query.returnGeometry = true;
+            query.outFields = ["*"]
+        }
         return layerView.queryFeatures(query).then(queryResults => {
             if (queryResults && queryResults.length && queryResults.length > 0) {
                 return queryResults;
+            } else if (queryResults.features && queryResults.features.length && queryResults.features.length > 0) {
+                return queryResults.features;
             }
         });
 
@@ -301,7 +309,6 @@ function queryFeatures(queryGraphic: Graphic): void {
 
 function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean): void {
     let updateContent: string;
-
     if (displayResults && displayResults.length > 0) {
         let updateValues: string[] = displayResults.map((graphic: Graphic, index: number) => {
             let titleTemplate = graphic.getEffectivePopupTemplate().title;
@@ -359,7 +366,6 @@ function displayFeatureInfo(key: number): void {
 
     if (selectedGraphic) {
         const popup = view.popup;
-
         popup.set({
             features: [selectedGraphic],
             location: selectedGraphic.geometry
