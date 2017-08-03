@@ -7,6 +7,7 @@ import FeatureLayerView = require("esri/views/layers/FeatureLayerView");
 import Query = require("esri/tasks/support/Query");
 
 import watchUtils = require("esri/core/watchUtils");
+import promiseUtils = require("esri/core/promiseUtils");
 
 import Graphic = require("esri/Graphic");
 import Color = require("esri/Color");
@@ -25,7 +26,7 @@ let watchHandler: esri.PausableWatchHandle;
 let keyDownHandler: IHandle;
 let keyUpHandler: IHandle;
 
-let queryLayer: FeatureLayerView;
+const queryLayers: FeatureLayerView[] = [];
 let displayField: string;
 let webmapId = "7eca81856e22478da183da6a33c24dfe";
 
@@ -82,114 +83,117 @@ searchWidget.sources.getItemAt(0).withinViewEnabled = true;
  * that appear within the highlighted graphic
 */
 view.then(() => {
-    view.whenLayerView(map.layers.getItemAt(0))
-        .then(layerView => {
-            queryLayer = layerView;
-            const l: FeatureLayer = <FeatureLayer>queryLayer.layer;
-            l.fields.some((field: any) => {
-                if (field.type === "string") {
-                    displayField = field.name;
-                    return true;
-                }
-            });
-            window.addEventListener("mousedown", (keyEvt: any) => {
-                // Don't show the feature list unless tab is pressed. 
-                // prevent default for text box so search works
-                if (keyEvt.key !== "Tab") {
-                    if (keyEvt.target.type !== "text") {
-                        keyEvt.preventDefault();
-                        if (mapNode) {
-                            mapNode.blur();
-                        }
+
+    //  view.whenLayerView(map.layers.getItemAt(0)).then(layerView => {
+    view.on("layerview-create", (result) => {
+        if (result.layerView.layer.type === "feature") {
+            const l: FeatureLayer = <FeatureLayer>result.layer;
+            if (l.popupEnabled) {
+                l.fields.some((field: any) => {
+                    if (field.type === "string") {
+                        result.layerView["displayField"] = field.name;
+                        return true;
                     }
+                });
+                queryLayers.push(result.layerView as FeatureLayerView);
+            }
+        }
+
+    });
+    window.addEventListener("mousedown", (keyEvt: any) => {
+        // Don't show the feature list unless tab is pressed. 
+        // prevent default for text box so search works
+        if (keyEvt.key !== "Tab") {
+            if (keyEvt.target.type !== "text") {
+                keyEvt.preventDefault();
+                if (mapNode) {
+                    mapNode.blur();
                 }
-            });
-            const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
+            }
+        }
+    });
+    const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
 
-            mapNode.setAttribute("tabindex", "0");
-            mapNode.setAttribute("aria-label", map.portalItem.description);
-            mapNode.addEventListener("blur", cleanUp);
+    mapNode.setAttribute("tabindex", "0");
+    mapNode.setAttribute("aria-label", map.portalItem.description);
+    mapNode.addEventListener("blur", cleanUp);
 
-            mapNode.addEventListener("focus", () => {
-
-                console.log("Focus");
-                liveNode.classList.remove("hidden");
-                mapNode.classList.add("focus");
-                // mapNode.focus();
+    mapNode.addEventListener("focus", () => {
+        liveNode.classList.remove("hidden");
+        mapNode.classList.add("focus");
+        // mapNode.focus();
+        createGraphic(view);
+        if (!watchHandler) {
+            watchHandler = watchUtils.pausable(view, "extent", () => {
                 createGraphic(view);
-                if (!watchHandler) {
-                    watchHandler = watchUtils.pausable(view, "extent", () => {
-                        createGraphic(view);
-                    });
+            });
+        }
+        else {
+            watchHandler.resume();
+        }
+        if (!keyUpHandler) {
+            /**
+             * Handle numeric nav keys 
+             */
+            keyUpHandler = view.on("key-up", (keyEvt: any) => {
+
+                const key = keyEvt.key;
+                if (pageResults && pageResults.length && key <= pageResults.length) {
+                    displayFeatureInfo(key);
                 }
-                else {
-                    watchHandler.resume();
+                // not on the first page and more than one page
+                else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
+                    currentPage -= 1;
+                    generateList();
                 }
-                if (!keyUpHandler) {
-                    /**
-                     * Handle numeric nav keys 
-                     */
-                    keyUpHandler = view.on("key-up", (keyEvt: any) => {
 
-                        const key = keyEvt.key;
-                        if (pageResults && pageResults.length && key <= pageResults.length) {
-                            displayFeatureInfo(key);
-                        }
-                        // not on the first page and more than one page
-                        else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
-                            currentPage -= 1;
-                            generateList();
-                        }
-
-                        // we have more than one page
-                        else if (key === "9" && numberOfPages > 1) {
-                            currentPage += 1;
-                            generateList();
-                        }
-                    });
-                }
-                if (!keyDownHandler) {
-                    /**
-                     * Handle info and dir keys 
-                     */
-
-                    keyDownHandler = view.on("key-down", (keyEvt: any) => {
-                        const key = keyEvt.key;
-
-                        if (key === "i") {
-                            // reverse geocode and display location information
-                            let loc = view.graphics.getItemAt(0).geometry.center;
-                            const worldLocator = searchWidget.sources.getItemAt(0);
-                            console.log("Locator", worldLocator);
-                            worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
-                                console.log("Candidate", candidate);
-                                calculateLocation(candidate.attributes);
-                            });
-                        } else if (key === "ArrowUp" || key === "ArrowDown" ||
-                            key === "ArrowRight" || key === "ArrowLeft") {
-                            let dir: "north" | "south" | "east" | "west";
-
-                            switch (key) {
-                                case "ArrowUp":
-                                    dir = "north";
-                                    break;
-                                case "ArrowDown":
-                                    dir = "south";
-                                    break;
-                                case "ArrowRight":
-                                    dir = "east";
-                                    break;
-                                case "ArrowLeft":
-                                    dir = "west";
-                                    break;
-                            }
-                            liveDirNode.innerHTML = `Moving ${dir} <b>i</b> for more info`;
-                        }
-                    });
+                // we have more than one page
+                else if (key === "9" && numberOfPages > 1) {
+                    currentPage += 1;
+                    generateList();
                 }
             });
+        }
+        if (!keyDownHandler) {
+            /**
+             * Handle info and dir keys 
+             */
 
-        });
+            keyDownHandler = view.on("key-down", (keyEvt: any) => {
+                const key = keyEvt.key;
+
+                if (key === "i") {
+                    // reverse geocode and display location information
+                    let loc = view.graphics.getItemAt(0).geometry.center;
+                    const worldLocator = searchWidget.sources.getItemAt(0);
+                    worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
+                        calculateLocation(candidate.attributes);
+                    });
+                } else if (key === "ArrowUp" || key === "ArrowDown" ||
+                    key === "ArrowRight" || key === "ArrowLeft") {
+                    let dir: "north" | "south" | "east" | "west";
+
+                    switch (key) {
+                        case "ArrowUp":
+                            dir = "north";
+                            break;
+                        case "ArrowDown":
+                            dir = "south";
+                            break;
+                        case "ArrowRight":
+                            dir = "east";
+                            break;
+                        case "ArrowLeft":
+                            dir = "west";
+                            break;
+                    }
+                    liveDirNode.innerHTML = `Moving ${dir} <b>i</b> for more info`;
+                }
+            });
+        }
+    });
+
+    //  });
 });
 
 /**
@@ -253,7 +257,7 @@ function createGraphic(view: MapView): void {
 
     view.graphics.add(graphic);
 
-    if (queryLayer) {
+    if (queryLayers && queryLayers.length > 0) {
         queryFeatures(graphic);
     }
 }
@@ -266,22 +270,33 @@ function queryFeatures(queryGraphic: Graphic): void {
     const query = new Query({
         geometry: queryGraphic.geometry
     });
-    queryResults = null;
+    queryResults = [];
     pageResults = null;
     currentPage = 1;
 
-    queryLayer.queryFeatures(query)
-        .then(result => {
-            queryResults = result;
-            numberOfPages = Math.ceil(queryResults.length / numberPerPage);
-            if (queryResults && queryResults.length && queryResults.length > 21) {
-                // lots of results zoom to reduce # of features 
-                liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Use + to zoom in and reduce # of reuslts";
-            } else {
-                generateList();
-            }
 
+    promiseUtils.eachAlways(queryLayers.map((layerView: FeatureLayerView) => {
+        return layerView.queryFeatures(query).then(queryResults => {
+            if (queryResults && queryResults.length && queryResults.length > 0) {
+                return queryResults;
+            }
         });
+
+    })).then((results: __esri.EachAlwaysResult[]) => {
+        results.forEach(result => {
+            if (result && result.value) {
+                result.value.forEach((val: Graphic) => {
+                    queryResults.push(val);
+                });
+            }
+        });
+        numberOfPages = Math.ceil(queryResults.length / numberPerPage);
+        if (queryResults.length && queryResults.length > 21) {
+            liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Use + to zoom in and reduce # of reuslts";
+        } else {
+            generateList();
+        }
+    });
 }
 
 function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean): void {
@@ -289,11 +304,15 @@ function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean)
 
     if (displayResults && displayResults.length > 0) {
         let updateValues: string[] = displayResults.map((graphic: Graphic, index: number) => {
-            // ES6 Template String
-            const attr = graphic.attributes[displayField];
-            return `<span class="feature-label"><span class="feature-index">${index + 1}</span>${attr}</span>`;
+            let titleTemplate = graphic.getEffectivePopupTemplate().title;
+            // find curly brace values
+            for (let key in graphic.attributes) {
+                if (graphic.attributes.hasOwnProperty(key)) {
+                    titleTemplate = titleTemplate.replace(new RegExp('{' + key + '}', 'gi'), graphic.attributes[key]);
+                }
+            }
+            return `<span class="feature-label"><span class="feature-index">${index + 1}</span>${titleTemplate}</span>`;
         });
-
         if (next) {
             // add 9 to get more features
             updateValues.push(
@@ -319,12 +338,11 @@ function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean)
  * Generate a page of content for the currently highlighted area
  */
 function generateList(): void {
-
     const begin = ((currentPage - 1) * numberPerPage);
     const end = begin + numberPerPage;
     pageResults = queryResults.slice(begin, end);
 
-    // Get page status
+    // Get page status  
     const prevDisabled = currentPage === 1; // don't show 8
     const nextDisabled = currentPage === numberOfPages; // don't show 9
 
