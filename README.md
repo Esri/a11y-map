@@ -4,16 +4,23 @@ A prototype app to test adding keyboard interaction (similar to Google's a11y be
 
 [Demo App](https://kellyhutchins.github.io/a11y-map/index.html)
 
+
 ## Purpose 
 Use as a starting point to discusss ways to handle map accessiblity. 
 
 ## Features 
 
-To see the a11y features tab into the map. Once you do so you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard. At this point this is just a prototype app and feedback and comments are greatly appreciated. 
+To see the a11y features tab into the map. Once you do so you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard. 
+* Use the arrow keys to move around the map
+* Use the +/- keys to zoom in and out of the map
+* To learn more about one of the features wihin the selection box press the associated number key. 
+* To learn more about the direction the box is moving and current location press the i button
+
+
+At this point this is just a prototype app and feedback and comments are greatly appreciated. 
 
 You can access a live version of the app for testing here. The live test app supports a web map url parameter so you can append ?webmap=<some web map id> to the url to test with various web maps. The app requires that the map has a feature layer as the first layer and it uses the first string field it finds as the display field. 
 
-[Live App](https://kellyhutchins.github.io/a11y-map/index.html)
 
 Another interesting app that shows navigating content in an accessible manner is Patrick Arlt's demo app available here. 
 [Accessible Search](https://github.com/patrickarlt/accessible-js-api-app)
