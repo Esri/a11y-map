@@ -8,7 +8,20 @@
         overflow: hidden;
     }
 
-    .esri-view-surface:focus {
+    .offscreen {
+        clip-path: inset(100%);
+        clip: rect(1px 1px 1px 1px);
+        /* IE 6/7 */
+        clip: rect(1px, 1px, 1px, 1px);
+        height: 1px;
+        overflow: hidden;
+        position: absolute;
+        white-space: nowrap;
+        /* added line */
+        width: 1px;
+    }
+
+    esri-popup:focus {
         border: 2px solid rgb(94, 158, 214);
     }
 
@@ -17,16 +30,16 @@
     }
 
     .live-info {
-        width: 500px;
-        height: auto;
         position: absolute;
+        bottom: 20px;
         left: 0;
         right: 0;
-        bottom: 20px;
+        height: auto;
         margin: 0 auto;
         background: white;
         z-index: 1;
         font-size: 15px;
+        padding: 1em;
     }
 
     .feature-index {

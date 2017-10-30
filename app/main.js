@@ -11,6 +11,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var pageResults;
     var currentPage;
     var numberOfPages;
+    var mapNode = null;
     var liveNode = document.getElementById("liveViewInfo");
     var liveDirNode = document.getElementById("dir");
     var liveDetailsNode = document.getElementById("details");
@@ -28,10 +29,31 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         map: map,
         container: "viewDiv"
     });
+    // Add the live node to the view 
+    view.ui.add(liveNode, "manual");
+    // When user tabs into the app for the first time 
+    // add button to navigate map via keyboard to the ui and focus it 
+    document.addEventListener("keydown", function handler(e) {
+        if (e.keyCode === 9) {
+            e.currentTarget.removeEventListener(e.type, handler);
+            var keyboardBtn_1 = document.getElementById("keyboard");
+            view.ui.add({
+                component: keyboardBtn_1,
+                position: "top-left",
+                index: 0
+            });
+            keyboardBtn_1.addEventListener("click", addFocusToMapNode);
+            keyboardBtn_1.focus();
+            keyboardBtn_1.addEventListener('blur', function blurHandler(e) {
+                e.currentTarget.removeEventListener(e.type, blurHandler);
+                keyboardBtn_1.focus();
+            });
+        }
+    });
     var searchWidget = new Search({
         view: view,
-        popupEnabled: false,
-        popupOpenOnSelect: false,
+        popupEnabled: true,
+        popupOpenOnSelect: true,
         autoSelect: true
     });
     var homeWidget = new Home({
@@ -45,12 +67,19 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     });
     // Only search locally within the view extent 
     searchWidget.sources.getItemAt(0).withinViewEnabled = true;
+    searchWidget.on("search-start", function () {
+        watchUtils.once(view.popup, "title", function () {
+            addFocusToPopup();
+            watchUtils.whenFalseOnce(view.popup, "visible", function () {
+                addFocusToMapNode();
+            });
+        });
+    });
     /**
      * Get the first layer in the map to use as the layer to query for features
      * that appear within the highlighted graphic
     */
     view.then(function () {
-        //  view.whenLayerView(map.layers.getItemAt(0)).then(layerView => {
         view.on("layerview-create", function (result) {
             if (result.layerView.layer.type === "feature") {
                 var l = result.layer;
@@ -67,94 +96,74 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 });
             }
         });
-        window.addEventListener("mousedown", function (keyEvt) {
-            // Don't show the feature list unless tab is pressed. 
-            // prevent default for text box so search works
-            if (keyEvt.key !== "Tab") {
-                if (keyEvt.target.type !== "text") {
-                    keyEvt.preventDefault();
-                    if (mapNode) {
-                        mapNode.blur();
-                    }
-                }
-            }
-        });
-        var mapNode = document.querySelector(".esri-view-surface");
-        mapNode.setAttribute("tabindex", "0");
-        mapNode.setAttribute("aria-label", map.portalItem.description);
-        mapNode.addEventListener("blur", cleanUp);
-        mapNode.addEventListener("focus", function () {
-            liveNode.classList.remove("hidden");
-            mapNode.classList.add("focus");
-            // mapNode.focus();
-            createGraphic(view);
-            if (!watchHandler) {
-                watchHandler = watchUtils.pausable(view, "extent", function () {
-                    createGraphic(view);
-                });
-            }
-            else {
-                watchHandler.resume();
-            }
-            if (!keyUpHandler) {
-                /**
-                 * Handle numeric nav keys
-                 */
-                keyUpHandler = view.on("key-up", function (keyEvt) {
-                    var key = keyEvt.key;
-                    if (pageResults && pageResults.length && key <= pageResults.length) {
-                        displayFeatureInfo(key);
-                    }
-                    else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
-                        currentPage -= 1;
-                        generateList();
-                    }
-                    else if (key === "9" && numberOfPages > 1) {
-                        currentPage += 1;
-                        generateList();
-                    }
-                });
-            }
-            if (!keyDownHandler) {
-                /**
-                 * Handle info and dir keys
-                 */
-                keyDownHandler = view.on("key-down", function (keyEvt) {
-                    var key = keyEvt.key;
-                    if (key === "i") {
-                        // reverse geocode and display location information
-                        var loc = view.graphics.getItemAt(0).geometry.center;
-                        var worldLocator = searchWidget.sources.getItemAt(0);
-                        worldLocator.locator.locationToAddress(loc, 1000).then(function (candidate) {
-                            calculateLocation(candidate.attributes);
-                        }, function (err) {
-                            liveDirNode.innerHTML = "Unable to calculate location";
-                        });
-                    }
-                    else if (key === "ArrowUp" || key === "ArrowDown" ||
-                        key === "ArrowRight" || key === "ArrowLeft") {
-                        var dir = void 0;
-                        switch (key) {
-                            case "ArrowUp":
-                                dir = "north";
-                                break;
-                            case "ArrowDown":
-                                dir = "south";
-                                break;
-                            case "ArrowRight":
-                                dir = "east";
-                                break;
-                            case "ArrowLeft":
-                                dir = "west";
-                                break;
-                        }
-                        liveDirNode.innerHTML = "Moving " + dir + " <b>i</b> for more info";
-                    }
-                });
-            }
-        });
-        //  });
     });
+    function setupKeyHandlers() {
+        if (!watchHandler) {
+            watchHandler = watchUtils.pausable(view, "extent", function () {
+                createGraphic(view);
+            });
+        }
+        else {
+            watchHandler.resume();
+        }
+        if (!keyUpHandler) {
+            /**
+             * Handle numeric nav keys
+             */
+            keyUpHandler = view.on("key-up", function (keyEvt) {
+                var key = keyEvt.key;
+                if (pageResults && pageResults.length && key <= pageResults.length) {
+                    displayFeatureInfo(key);
+                }
+                else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
+                    currentPage -= 1;
+                    generateList();
+                }
+                else if (key === "9" && numberOfPages > 1) {
+                    currentPage += 1;
+                    generateList();
+                }
+            });
+        }
+        if (!keyDownHandler) {
+            /**
+             * Handle info and dir keys
+             */
+            keyDownHandler = view.on("key-down", function (keyEvt) {
+                var key = keyEvt.key;
+                if (key === "i") {
+                    // reverse geocode and display location information
+                    var rectExt = view.graphics.getItemAt(0).geometry;
+                    var loc = rectExt.center;
+                    var worldLocator = searchWidget.sources.getItemAt(0);
+                    worldLocator.locator.locationToAddress(loc, 1000).then(function (candidate) {
+                        calculateLocation(candidate.attributes);
+                    }, function (err) {
+                        liveDirNode.innerHTML = "Unable to calculate location";
+                    });
+                }
+                else if (key === "ArrowUp" || key === "ArrowDown" ||
+                    key === "ArrowRight" || key === "ArrowLeft") {
+                    var dir = void 0;
+                    switch (key) {
+                        case "ArrowUp":
+                            dir = "north";
+                            break;
+                        case "ArrowDown":
+                            dir = "south";
+                            break;
+                        case "ArrowRight":
+                            dir = "east";
+                            break;
+                        case "ArrowLeft":
+                            dir = "west";
+                            break;
+                    }
+                    liveDirNode.innerHTML = "Moving " + dir + ".";
+                }
+            });
+        }
+    }
     /**
      * Clean up the highlight graphic and feature list if the map loses
      * focus and the popup isn't visible
@@ -215,7 +224,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     /**
      *  Query the feature layer to get the features within the highlighted area
      * currently setup for just the first layer in web map
-     * @param queryGraphic Extent graphic used drawn on the map and used to sect features
+     * @param queryGraphic Extent graphic used drawn on the map and used to select features
      */
     function queryFeatures(queryGraphic) {
         var query = new Query({
@@ -225,18 +234,23 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         pageResults = null;
         currentPage = 1;
         promiseUtils.eachAlways(queryLayers.map(function (layerView) {
+            var flayer;
             if (layerView.layer.type && layerView.layer.type === "map-image") {
                 query.returnGeometry = true;
                 query.outFields = ["*"];
+                flayer = layerView;
+                return layerView.queryFeatures(query).then(function (queryResults) {
+                    if (queryResults.features && queryResults.features.length && queryResults.features.length > 0) {
+                        return queryResults.features;
+                    }
+                });
             }
-            return layerView.queryFeatures(query).then(function (queryResults) {
-                if (queryResults && queryResults.length && queryResults.length > 0) {
+            else {
+                flayer = layerView;
+                return layerView.queryFeatures(query).then(function (queryResults) {
                     return queryResults;
-                }
-                else if (queryResults.features && queryResults.features.length && queryResults.features.length > 0) {
-                    return queryResults.features;
-                }
-            });
+                });
+            }
         })).then(function (results) {
             results.forEach(function (result) {
                 if (result && result.value) {
@@ -247,7 +261,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             });
             numberOfPages = Math.ceil(queryResults.length / numberPerPage);
             if (queryResults.length && queryResults.length > 21) {
-                liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Use + to zoom in and reduce # of reuslts";
+                liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Press the plus key to zoom in and reduce number of results.";
             }
             else {
                 generateList();
@@ -258,14 +272,14 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         var updateContent;
         if (displayResults && displayResults.length > 0) {
             var updateValues = displayResults.map(function (graphic, index) {
-                var titleTemplate = graphic.getEffectivePopupTemplate().title;
+                var titleTemplate = graphic.popupTemplate.title;
                 // find curly brace values
                 for (var key in graphic.attributes) {
                     if (graphic.attributes.hasOwnProperty(key)) {
                         titleTemplate = titleTemplate.replace(new RegExp('{' + key + '}', 'gi'), graphic.attributes[key]);
                     }
                 }
-                return "<span class=\"feature-label\"><span class=\"feature-index\">" + (index + 1) + "</span>" + titleTemplate + "</span>";
+                return "<span class=\"feature-label\"><span class=\"feature-index\">" + (index + 1) + "</span>  " + titleTemplate + "</span>";
             });
             if (next) {
                 // add 9 to get more features
@@ -278,9 +292,10 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             updateContent = updateValues.join(" ");
         }
         else {
-            updateContent = "No results found in highlight area";
+            updateContent = "No features found";
         }
         liveDetailsNode.innerHTML = updateContent;
+        liveNode.setAttribute("aria-busy", "false");
     }
     /**
      * Generate a page of content for the currently highlighted area
@@ -292,6 +307,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         // Get page status  
         var prevDisabled = currentPage === 1; // don't show 8
         var nextDisabled = currentPage === numberOfPages; // don't show 9
+        liveNode.setAttribute("aria-busy", "true");
         updateLiveInfo(pageResults, !prevDisabled, !nextDisabled);
     }
     /**
@@ -301,24 +317,52 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     function displayFeatureInfo(key) {
         var selectedGraphic = pageResults[key - 1];
         if (selectedGraphic) {
-            var popup_1 = view.popup;
-            popup_1.set({
+            var popup = view.popup;
+            popup.set({
                 features: [selectedGraphic],
                 location: selectedGraphic.geometry
             });
-            popup_1.open({
-                features: [popup_1.selectedFeature]
+            watchUtils.whenTrueOnce(popup, "visible", addFocusToPopup);
+            popup.open({
+                features: [popup.selectedFeature]
             });
-            popup_1.container.setAttribute("tabindex", "0");
-            var popupNode = document.querySelector(".esri-popup__position-container");
-            popupNode.setAttribute("tabindex", "0");
-            popupNode.focus();
-            watchUtils.once(popup_1, "visible", function () {
-                if (!popup_1.visible) {
-                    var mapNode = document.querySelector(".esri-view-surface");
-                    mapNode.focus();
+            watchUtils.whenFalseOnce(popup, "visible", addFocusToMapNode);
+        }
+    }
+    function addFocusToMapNode() {
+        if (!mapNode) {
+            mapNode = document.querySelector(".esri-view-surface");
+            mapNode.setAttribute("tabindex", "0");
+            document.getElementById("intro").innerHTML = "Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.\n        For details on your current area press the i key.";
+            mapNode.addEventListener("blur", cleanUp);
+            window.addEventListener("mousedown", function (keyEvt) {
+                // Don't show the feature list unless tab is pressed. 
+                // prevent default for text box so search works
+                if (keyEvt.key !== "Tab") {
+                    if (keyEvt.target.type !== "text") {
+                        keyEvt.preventDefault();
+                        if (mapNode) {
+                            mapNode.blur();
+                        }
+                    }
                 }
             });
+            mapNode.addEventListener("focus", function () {
+                view.focus();
+                liveNode.classList.remove("hidden");
+                mapNode.classList.add("focus");
+                createGraphic(view);
+                setupKeyHandlers();
+            });
+        }
+        mapNode.focus();
+    }
+    function addFocusToPopup() {
+        var popupNode = document.querySelector(".esri-popup__position-container");
+        if (popupNode) {
+            popupNode.setAttribute("tabindex", "0");
+            popupNode.setAttribute("aria-role", "dialog");
+            popupNode.focus();
         }
     }
     function calculateLocation(address) {
@@ -338,7 +382,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         else {
             displayValue = address.Match_addr || address.Address;
         }
-        liveDirNode.innerHTML = "Inspected area is near " + displayValue;
+        liveDirNode.innerHTML = "Currently searching near " + displayValue;
     }
 });
 //# sourceMappingURL=main.js.map

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>A11y Map</title>
-    <link rel="stylesheet" href="https://js.arcgis.com/4.4/esri/css/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.5/esri/css/main.css">
     <link rel="stylesheet" href="css/main.css">
     <script>
         var locationPath = location.pathname.replace(/\/[^\/]+$/, "");
@@ -17,16 +17,23 @@
             }]
         }
     </script>
-    <script src="https://js.arcgis.com/4.4"></script>
+    <script src="https://js.arcgis.com/4.5"></script>
 </head>
 
-<body role="application">
-    <div id="viewDiv">
-        <div id="liveViewInfo" aria-live="polite" role="navigation" class="hidden live-info">
-            <div id="dir" class="directions-info"></div>
-            <div id="details" class="detail-info"></div>
+<body>
+    <div id="viewDiv" role="application">
+    </div>
+    <div id="liveViewInfo" aria-live="polite" role="navigation" class="hidden live-info">
+        <div id="intro"></div>
+        <div id="details" class="detail-info">
+        </div>
+        <div class="directions-info">
+            <span id="dir"></span>
         </div>
     </div>
+    <button tabindex="0" role="button" id="keyboard" class="esri-widget esri-component esri-widget-button keyboard-btn esri-icon-announcement"
+        aria-label="Enable keyboard navigation">
+    </button>
     <script>
         require(["app/main"]);
     </script>
