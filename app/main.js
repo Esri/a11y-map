@@ -318,9 +318,13 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         var selectedGraphic = pageResults[key - 1];
         if (selectedGraphic) {
             var popup = view.popup;
+            var location_1 = null;
+            if (selectedGraphic && selectedGraphic.geometry && selectedGraphic.geometry.extent) {
+                location_1 = selectedGraphic.geometry.extent.center;
+            }
             popup.set({
                 features: [selectedGraphic],
-                location: selectedGraphic.geometry
+                location: location_1
             });
             watchUtils.whenTrueOnce(popup, "visible", addFocusToPopup);
             popup.open({

@@ -392,10 +392,13 @@ function displayFeatureInfo(key: number): void {
 
     if (selectedGraphic) {
         const popup = view.popup;
-
+        let location = null;
+        if (selectedGraphic && selectedGraphic.geometry && selectedGraphic.geometry.extent) {
+            location = selectedGraphic.geometry.extent.center;
+        }
         popup.set({
             features: [selectedGraphic],
-            location: selectedGraphic.geometry
+            location: location
         });
 
         watchUtils.whenTrueOnce(popup, "visible", addFocusToPopup);
