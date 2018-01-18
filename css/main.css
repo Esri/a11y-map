@@ -43,13 +43,14 @@
     }
 
     .feature-index {
-        background-color: #d3d3d3;
-        color: #333;
+        background-color: #333;
+        color: #fff;
         padding: 2px 4px;
         margin-right: 4px;
         font-weight: bold;
         min-width: 12px;
         text-align: center;
+        border-radius: 8px;
     }
 
     .feature-label {
