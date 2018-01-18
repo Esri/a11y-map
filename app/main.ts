@@ -308,11 +308,12 @@ function queryFeatures(queryGraphic: Graphic): void {
         } else {
             flayer = layerView as FeatureLayerView;
             return layerView.queryFeatures(query).then((queryResults: Graphic[]) => {
+
                 return queryResults;
             });
         }
-
     })).then((results: __esri.EachAlwaysResult[]) => {
+        queryResults = [];
         results.forEach(result => {
             if (result && result.value) {
                 result.value.forEach((val: Graphic) => {

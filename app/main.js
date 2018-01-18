@@ -252,6 +252,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 });
             }
         })).then(function (results) {
+            queryResults = [];
             results.forEach(function (result) {
                 if (result && result.value) {
                     result.value.forEach(function (val) {
