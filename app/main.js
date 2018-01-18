@@ -12,6 +12,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var currentPage;
     var numberOfPages;
     var mapNode = null;
+    var extent = null;
     var liveNode = document.getElementById("liveViewInfo");
     var liveDirNode = document.getElementById("dir");
     var liveDetailsNode = document.getElementById("details");
@@ -80,6 +81,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
      * that appear within the highlighted graphic
     */
     view.then(function () {
+        extent = view.extent.clone();
         view.on("layerview-create", function (result) {
             if (result.layerView.layer.type === "feature") {
                 var l = result.layer;
@@ -160,6 +162,10 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                             break;
                     }
                     liveDirNode.innerHTML = "Moving " + dir + ".";
+                }
+                else if (key === "h") {
+                    /// Go to the view's initial extent 
+                    view.goTo(extent);
                 }
             });
         }
@@ -338,7 +344,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         if (!mapNode) {
             mapNode = document.querySelector(".esri-view-surface");
             mapNode.setAttribute("tabindex", "0");
-            document.getElementById("intro").innerHTML = "Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.\n        For details on your current area press the i key.";
+            document.getElementById("intro").innerHTML = "Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.\n        For details on your current area press the i key. Press the h key to return to the  starting map location.";
             mapNode.addEventListener("blur", cleanUp);
             window.addEventListener("mousedown", function (keyEvt) {
                 // Don't show the feature list unless tab is pressed. 

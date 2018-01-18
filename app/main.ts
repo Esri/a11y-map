@@ -39,6 +39,8 @@ let pageResults: Graphic[];
 let currentPage: number;
 let numberOfPages: number;
 let mapNode: HTMLDivElement = null;
+let extent: Extent = null;
+
 
 const liveNode = document.getElementById("liveViewInfo");
 const liveDirNode = document.getElementById("dir");
@@ -120,6 +122,7 @@ searchWidget.on("search-start", () => {
  * that appear within the highlighted graphic
 */
 view.then(() => {
+    extent = view.extent.clone();
 
     view.on("layerview-create", (result) => {
         if (result.layerView.layer.type === "feature") {
@@ -210,6 +213,9 @@ function setupKeyHandlers() {
                         break;
                 }
                 liveDirNode.innerHTML = `Moving ${dir}.`;
+            } else if (key === "h") {
+                /// Go to the view's initial extent 
+                view.goTo(extent);
             }
         });
     }
@@ -418,7 +424,7 @@ function addFocusToMapNode() {
 
         mapNode.setAttribute("tabindex", "0");
         document.getElementById("intro").innerHTML = `Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.
-        For details on your current area press the i key.`
+        For details on your current area press the i key. Press the h key to return to the  starting map location.`
         mapNode.addEventListener("blur", cleanUp);
         window.addEventListener("mousedown", (keyEvt: any) => {
             // Don't show the feature list unless tab is pressed. 
