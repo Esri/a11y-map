@@ -60,12 +60,8 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var homeWidget = new Home({
         view: view
     });
-    view.ui.add(searchWidget, {
-        position: "top-right"
-    });
-    view.ui.add(homeWidget, {
-        position: "top-left"
-    });
+    view.ui.add(searchWidget, "top-right");
+    view.ui.add(homeWidget, "top-left");
     // Only search locally within the view extent 
     searchWidget.sources.getItemAt(0).withinViewEnabled = true;
     searchWidget.on("search-start", function () {
@@ -139,6 +135,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                     var loc = rectExt.center;
                     var worldLocator = searchWidget.sources.getItemAt(0);
                     worldLocator.locator.locationToAddress(loc, 1000).then(function (candidate) {
+                        console.log("Attributes", JSON.stringify(candidate.attributes));
                         calculateLocation(candidate.attributes);
                     }, function (err) {
                         liveDirNode.innerHTML = "Unable to calculate location";
@@ -335,6 +332,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             });
             watchUtils.whenTrueOnce(popup, "visible", addFocusToPopup);
             popup.open({
+                location: popup.selectedFeature.geometry,
                 features: [popup.selectedFeature]
             });
             watchUtils.whenFalseOnce(popup, "visible", addFocusToMapNode);

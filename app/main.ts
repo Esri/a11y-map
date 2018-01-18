@@ -97,12 +97,8 @@ const searchWidget = new Search({
 const homeWidget = new Home({
     view: view
 });
-view.ui.add(searchWidget, {
-    position: "top-right"
-});
-view.ui.add(homeWidget, {
-    position: "top-left"
-});
+view.ui.add(searchWidget, "top-right");
+view.ui.add(homeWidget, "top-left");
 
 
 // Only search locally within the view extent 
@@ -188,6 +184,7 @@ function setupKeyHandlers() {
                 const worldLocator = searchWidget.sources.getItemAt(0) as esri.LocatorSource;
 
                 worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
+                    console.log("Attributes", JSON.stringify(candidate.attributes));
                     calculateLocation(candidate.attributes);
                 }, (err: Error) => {
                     liveDirNode.innerHTML = "Unable to calculate location";
@@ -411,6 +408,7 @@ function displayFeatureInfo(key: number): void {
         watchUtils.whenTrueOnce(popup, "visible", addFocusToPopup);
 
         popup.open({
+            location: popup.selectedFeature.geometry,
             features: [popup.selectedFeature]
         });
 
@@ -476,6 +474,5 @@ function calculateLocation(address: any) {
     else {
         displayValue = address.Match_addr || address.Address;
     }
-
     liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
 }
