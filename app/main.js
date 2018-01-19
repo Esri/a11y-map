@@ -38,6 +38,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         if (e.keyCode === 9) {
             e.currentTarget.removeEventListener(e.type, handler);
             var keyboardBtn_1 = document.getElementById("keyboard");
+            keyboardBtn_1.classList.remove("hidden");
             view.ui.add({
                 component: keyboardBtn_1,
                 position: "top-left",

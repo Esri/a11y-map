@@ -23,15 +23,18 @@
 <body>
     <div id="viewDiv" role="application">
     </div>
-    <div id="liveViewInfo" aria-live="polite" role="navigation" class="hidden live-info">
-        <div id="intro"></div>
-        <div id="details" class="detail-info">
-        </div>
-        <div class="directions-info">
-            <span id="dir"></span>
+
+    <div id="liveViewInfo" class="hidden live-info">
+        <div id="intro" aria-live="polite" role="status"></div>
+        <div id="details" aria-live="assertive" aria-atomic="true" role="alert" class="detail-info"></div>
+        <div aria-live="polite">
+            <div class="directions-info">
+                <span id="dir"></span>
+            </div>
         </div>
     </div>
-    <button tabindex="0" role="button" id="keyboard" class="esri-widget esri-component esri-widget-button keyboard-btn esri-icon-announcement"
+
+    <button role="button" id="keyboard" class="hidden esri-widget esri-component esri-widget-button keyboard-btn esri-icon-announcement"
         aria-label="Enable keyboard navigation">
     </button>
     <script>

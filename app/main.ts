@@ -72,6 +72,7 @@ document.addEventListener("keydown", function handler(e) {
     if (e.keyCode === 9) {
         e.currentTarget.removeEventListener(e.type, handler);
         const keyboardBtn = document.getElementById("keyboard");
+        keyboardBtn.classList.remove("hidden");
 
         view.ui.add({
             component: keyboardBtn,
