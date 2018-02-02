@@ -9,6 +9,7 @@ import MapImageLayer = require("esri/layers/MapImageLayer");
 import Query = require("esri/tasks/support/Query");
 
 import watchUtils = require("esri/core/watchUtils");
+import requireUtils = require("esri/core/requireUtils");
 import promiseUtils = require("esri/core/promiseUtils");
 
 import Graphic = require("esri/Graphic");
@@ -24,6 +25,8 @@ import Home = require("esri/widgets/Home");
 import PopupTemplate = require('esri/PopupTemplate');
 
 import esri = __esri;
+import { Multipoint } from "esri/geometry";
+import { read } from "fs";
 
 let watchHandler: esri.PausableWatchHandle;
 let keyDownHandler: IHandle;
@@ -47,13 +50,17 @@ const liveDirNode = document.getElementById("dir");
 const liveDetailsNode = document.getElementById("details");
 
 const numberPerPage: number = 7;
-
+let enableDirections = false;
 
 const urlObject = urlUtils.urlToObject(document.location.href);
-if (urlObject.query && urlObject.query.webmap) {
-    webmapId = urlObject.query.webmap;
+if (urlObject && urlObject.query) {
+    if (urlObject.query.webmap) {
+        webmapId = urlObject.query.webmap;
+    }
+    if (urlObject.query.directions) {
+        enableDirections = true;
+    }
 }
-
 const map = new WebMap({
     portalItem: {
         id: webmapId
@@ -88,7 +95,6 @@ document.addEventListener("keydown", function handler(e) {
     }
 });
 
-
 const searchWidget = new Search({
     view: view,
     popupEnabled: true,
@@ -98,7 +104,11 @@ const searchWidget = new Search({
 const homeWidget = new Home({
     view: view
 });
-view.ui.add(searchWidget, "top-right");
+view.ui.add({
+    component: searchWidget,
+    position: "top-left",
+    index: 0
+});
 view.ui.add(homeWidget, "top-left");
 
 
@@ -107,7 +117,8 @@ searchWidget.sources.getItemAt(0).withinViewEnabled = true;
 
 searchWidget.on("search-start", () => {
     watchUtils.once(view.popup, "title", () => {
-        addFocusToPopup();
+
+        view.popup.focus();
         watchUtils.whenFalseOnce(view.popup, "visible", () => {
             addFocusToMapNode();
         });
@@ -120,8 +131,12 @@ searchWidget.on("search-start", () => {
 */
 view.then(() => {
     extent = view.extent.clone();
+    if (enableDirections) {
+        generateDirections(view);
+    }
 
     view.on("layerview-create", (result) => {
+
         if (result.layerView.layer.type === "feature") {
             const l: FeatureLayer = <FeatureLayer>result.layer;
             if (l.popupEnabled) {
@@ -334,7 +349,6 @@ function queryFeatures(queryGraphic: Graphic): void {
 
     });
 }
-
 function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean): void {
     let updateContent: string;
     if (displayResults && displayResults.length > 0) {
@@ -396,24 +410,18 @@ function displayFeatureInfo(key: number): void {
     const selectedGraphic = pageResults[key - 1];
 
     if (selectedGraphic) {
-        const popup = view.popup;
-        let location = null;
-        if (selectedGraphic && selectedGraphic.geometry && selectedGraphic.geometry.extent) {
+        let location: Point;
+        if (selectedGraphic.geometry.type === "point") {
+            location = selectedGraphic.geometry as Point;
+        } else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
             location = selectedGraphic.geometry.extent.center;
         }
-        popup.set({
-            features: [selectedGraphic],
-            location: location
+        view.popup.open({
+            location: location,
+            features: [selectedGraphic]
         });
-
-        watchUtils.whenTrueOnce(popup, "visible", addFocusToPopup);
-
-        popup.open({
-            location: popup.selectedFeature.geometry,
-            features: [popup.selectedFeature]
-        });
-
-        watchUtils.whenFalseOnce(popup, "visible", addFocusToMapNode);
+        watchUtils.whenTrueOnce(view.popup, "visible", () => { view.popup.focus(); })
+        watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMapNode);
     }
 }
 function addFocusToMapNode() {
@@ -449,14 +457,7 @@ function addFocusToMapNode() {
     }
     mapNode.focus();
 }
-function addFocusToPopup() {
-    const popupNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-popup__position-container");
-    if (popupNode) {
-        popupNode.setAttribute("tabindex", "0");
-        popupNode.setAttribute("aria-role", "dialog");
-        popupNode.focus();
-    }
-}
+
 function calculateLocation(address: any) {
 
     let displayValue;
@@ -476,4 +477,194 @@ function calculateLocation(address: any) {
         displayValue = address.Match_addr || address.Address;
     }
     liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
+}
+
+function generateDirections(view: MapView) {
+
+    // Once the JSAPI directons widget supports adding a pre-created location we'll pull this out and use the 
+    // Directions widget instead
+    requireUtils.when(require, [
+        "esri/tasks/RouteTask",
+        "esri/layers/GraphicsLayer",
+        "esri/tasks/support/RouteParameters",
+        "esri/tasks/support/FeatureSet",
+        "esri/widgets/Expand",
+        "esri/widgets/Search"
+    ]).then(([RouteTask, GraphicsLayer, RouteParameters, FeatureSet, Expand, Search]) => {
+        const routeUrl = "https://utility.arcgis.com/usrsvcs/appservices/558KNZRaOjSBlsNN/rest/services/World/Route/NAServer/Route_World";
+
+        const panel = document.createElement("div");
+        panel.classList.add("panel");
+        const directionsList = document.createElement("div");
+        directionsList.id = "directionsList";
+        const distanceDetails = document.createElement("div");
+        distanceDetails.id = "distanceDetails";
+        distanceDetails.classList.add("text-darker-gray", "driving-details", "text-rule", "text-darker-gray");
+
+        directionsList.setAttribute("role", "region");
+        directionsList.classList.add("directions-list");
+        directionsList.setAttribute("aria-atomic", "true");
+        directionsList.setAttribute("aria-live", "polite");
+
+        const searchContainer = document.createElement("div");
+
+        const endSearchContainer = document.createElement("div");
+
+
+        panel.appendChild(searchContainer);
+
+        panel.appendChild(endSearchContainer);
+        panel.appendChild(distanceDetails);
+        panel.appendChild(directionsList);
+
+        const expand = new Expand({
+            view: view,
+            content: panel,
+            expandIconClass: "esri-icon-directions"
+        });
+
+        const routeLayer = new GraphicsLayer({
+            id: "routes"
+        });
+
+        view.map.add(routeLayer);
+
+        const routeParams = new RouteParameters({
+            stops: new FeatureSet(),
+            returnDirections: true,
+            directionsOutputType: "complete"
+        });
+
+        const routeTask = new RouteTask({
+            url: routeUrl
+        });
+
+        const startSearch = createSearch(searchContainer, "Enter start");
+        const endSearch = createSearch(endSearchContainer, "Enter destination");
+
+        const action: any = {
+            title: "Directions",
+            id: "directions",
+            className: "esri-icon-directions"
+        };
+
+        view.popup.actions.push(action);
+
+
+        view.popup.on("trigger-action", (event) => {
+            if (event.action.id = "directions") {
+                routeLayer.removeAll();
+                const selFeature = view.popup.selectedFeature.clone();
+                view.popup.close();
+                view.ui.add(expand, "top-right");
+
+                // TODO handle focus when panel closes
+                watchUtils.when(expand, "expanded", () => {
+                    if (expand.expanded) {
+                        endSearch.focus();
+                    } else {
+
+                        view.focus();
+                    }
+                });
+                expand.expand();
+
+
+                const location = view.popup.location;
+                startSearch.searchTerm = location.x + ", " + location.y;
+                const endGraphic = new Graphic({
+                    geometry: location,
+                    symbol: {
+                        type: "simple-marker",
+                        path: "M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z",
+                        color: "#00ff00",
+                        outline: {
+                            width: "1",
+                            color: "#fff"
+                        },
+                        size: "26px"
+                    }
+                });
+                routeLayer.add(endGraphic);
+
+                endSearch.on("search-complete", (results: any) => {
+                    routeLayer.clear
+                    distanceDetails.innerHTML = "";
+                    directionsList.innerHTML = "";
+                    if (results.numResults > 0) {
+
+
+                        const startGraphic = new Graphic({
+                            geometry: results.results[0].results[0].feature.geometry, symbol: {
+                                type: "simple-marker",
+                                path: "M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z",
+                                color: "#0892d0",
+                                outline: {
+                                    width: "1",
+                                    color: "#fff"
+                                },
+                                size: "26px"
+                            }
+                        });
+                        routeLayer.add(startGraphic);
+                        routeParams.stops.features.push(startGraphic);
+                        routeParams.stops.features.push(endGraphic);
+                        routeTask.solve(routeParams).then((routeResult: any) => {
+
+                            const result = routeResult.routeResults[0];
+                            const route = result.route;
+
+                            route.symbol = {
+                                type: "simple-line",
+                                color: "#00b3fd",
+                                width: 4,
+                                outline: {
+                                    color: "#fff",
+                                    width: "1"
+                                },
+                                join: "bevel",
+                                cap: "round"
+                            };
+
+                            routeLayer.add(route);
+
+                            distanceDetails.innerHTML = `Time: ${Math.round(result.directions.totalTime)} Distance: ${Math.round(result.route.attributes.Total_Miles).toFixed(4)} miles `
+                            const details = `<ol class="list-numbered directions-list"> ${result.directions.features.map((feature: Graphic) => `<li data-geometry=${feature.geometry}>${feature.attributes.text}</li>`).join("")} </ol>`
+
+                            directionsList.innerHTML = details;
+
+                        });
+                    }
+                })
+            }
+        });
+
+    });
+
+}
+
+function createSearch(node: HTMLDivElement, placeholder: string) {
+
+    const search = new Search({
+        view: view,
+        popupEnabled: false,
+        popupOpenOnSelect: false,
+        autoSelect: false,
+        container: node
+    });
+
+    search.on("search-clear", () => {
+        const layer = view.map.findLayerById("routes") as __esri.GraphicsLayer;
+        layer.removeAll();
+
+        document.getElementById("distanceDetails").innerHTML = "";
+        document.getElementById("directionsList").innerHTML = "";
+    });
+    const source = search.sources as any;
+    const locator = source.items[0];
+
+
+    locator.placeholder = placeholder;
+    locator.filter = { where: null, geometry: view.extent };
+    return search;
 }

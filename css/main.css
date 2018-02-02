@@ -72,3 +72,23 @@
         right: 3px;
         color: #4d4d4d;
     }
+
+    .esri-expand__content .esri-widget {
+        margin-top: 0.5em;
+        margin-bottom: 0.5em;
+    }
+
+    .driving-details {
+        margin-top: 1em;
+        margin-bottom: 1em;
+    }
+
+    .panel {
+        max-height: 40%;
+        min-height: 20%;
+        overflow: auto;
+    }
+
+    #directionsList {
+        overflow: auto;
+    }
