@@ -417,7 +417,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             var distanceDetails = document.createElement("div");
             distanceDetails.id = "distanceDetails";
             distanceDetails.classList.add("text-darker-gray", "driving-details", "text-rule", "text-darker-gray");
-            directionsList.setAttribute("role", "region");
+            directionsList.setAttribute("role", "alert");
             directionsList.classList.add("directions-list");
             directionsList.setAttribute("aria-atomic", "true");
             directionsList.setAttribute("aria-live", "polite");
