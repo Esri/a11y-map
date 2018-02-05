@@ -458,8 +458,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                     var selFeature = view.popup.selectedFeature.clone();
                     view.popup.close();
                     view.ui.add(expand, "top-right");
-                    // TODO handle focus when panel closes
-                    watchUtils.when(expand, "expanded", function () {
+                    expand.watch("expanded", function () {
                         if (expand.expanded) {
                             endSearch.focus();
                         }

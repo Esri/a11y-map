@@ -558,12 +558,11 @@ function generateDirections(view: MapView) {
                 view.popup.close();
                 view.ui.add(expand, "top-right");
 
-                // TODO handle focus when panel closes
-                watchUtils.when(expand, "expanded", () => {
+
+                expand.watch("expanded", () => {
                     if (expand.expanded) {
                         endSearch.focus();
                     } else {
-
                         view.focus();
                     }
                 });
