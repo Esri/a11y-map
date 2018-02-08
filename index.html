@@ -28,7 +28,8 @@
 
     <div id="liveViewInfo" class="hidden live-info" role="navigation">
         <div id="intro" aria-live="polite" role="status"></div>
-        <div id="details" aria-live="assertive" aria-atomic="true" role="alert" class="detail-info"></div>
+        <!-- role="alert"  removed role=alert since this seems to cause duplicate speaking with voice over-->
+        <div id="details" aria-live="polite" aria-atomic="true" class="detail-info"></div>
         <div aria-live="polite">
             <div class="directions-info">
                 <span id="dir"></span>

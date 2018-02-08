@@ -341,6 +341,7 @@ function queryFeatures(queryGraphic: Graphic): void {
             }
         });
         numberOfPages = Math.ceil(queryResults.length / numberPerPage);
+        liveDetailsNode.innerHTML = "";
         if (queryResults.length && queryResults.length > 21) {
             liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Press the plus key to zoom in and reduce number of results.";
         } else {
