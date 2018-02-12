@@ -11,7 +11,6 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var pageResults;
     var currentPage;
     var numberOfPages;
-    var mapNode = null;
     var extent = null;
     var liveNode = document.getElementById("liveViewInfo");
     var liveDirNode = document.getElementById("dir");
@@ -50,7 +49,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 position: "top-left",
                 index: 0
             });
-            keyboardBtn_1.addEventListener("click", addFocusToMapNode);
+            keyboardBtn_1.addEventListener("click", addFocusToMap);
             keyboardBtn_1.focus();
             keyboardBtn_1.addEventListener('blur', function blurHandler(e) {
                 e.currentTarget.removeEventListener(e.type, blurHandler);
@@ -79,7 +78,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         watchUtils.once(view.popup, "title", function () {
             view.popup.focus();
             watchUtils.whenFalseOnce(view.popup, "visible", function () {
-                addFocusToMapNode();
+                addFocusToMap();
             });
         });
     });
@@ -189,9 +188,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         if (view.popup.visible) {
             return;
         }
-        var mapNode = document.querySelector(".esri-view-surface");
-        mapNode.blur();
-        mapNode.classList.remove("focus");
+        view.blur();
         liveNode.classList.add("hidden");
         liveDetailsNode.innerHTML = null;
         liveDirNode.innerHTML = null;
@@ -348,36 +345,33 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 features: [selectedGraphic]
             });
             watchUtils.whenTrueOnce(view.popup, "visible", function () { view.popup.focus(); });
-            watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMapNode);
+            watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMap);
         }
     }
-    function addFocusToMapNode() {
-        if (!mapNode) {
-            mapNode = document.querySelector(".esri-view-surface");
-            mapNode.setAttribute("tabindex", "0");
-            document.getElementById("intro").innerHTML = "Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.\n        For details on your current area press the i key. Press the h key to return to the  starting map location.";
-            mapNode.addEventListener("blur", cleanUp);
-            window.addEventListener("mousedown", function (keyEvt) {
-                // Don't show the feature list unless tab is pressed. 
-                // prevent default for text box so search works
-                if (keyEvt.key !== "Tab") {
-                    if (keyEvt.target.type !== "text") {
-                        keyEvt.preventDefault();
-                        if (mapNode) {
-                            mapNode.blur();
-                        }
-                    }
+    function addFocusToMap() {
+        document.getElementById("intro").innerHTML = "Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.\n        For details on your current area press the i key. Press the h key to return to the  starting map location.";
+        window.addEventListener("mousedown", function (keyEvt) {
+            // Don't show the feature list unless tab is pressed. 
+            // prevent default for text box so search works
+            if (keyEvt.key !== "Tab") {
+                if (keyEvt.target.type !== "text") {
+                    keyEvt.preventDefault();
+                    view.blur();
                 }
-            });
-            mapNode.addEventListener("focus", function () {
-                view.focus();
+            }
+        });
+        view.watch("focused", function () {
+            if (view.focused) {
                 liveNode.classList.remove("hidden");
-                mapNode.classList.add("focus");
                 createGraphic(view);
                 setupKeyHandlers();
-            });
-        }
-        mapNode.focus();
+            }
+            else {
+                cleanUp();
+            }
+        });
+        1;
+        view.focus();
     }
     function calculateLocation(address) {
         var displayValue;

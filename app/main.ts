@@ -41,7 +41,6 @@ let pageResults: Graphic[];
 
 let currentPage: number;
 let numberOfPages: number;
-let mapNode: HTMLDivElement = null;
 let extent: Extent = null;
 
 
@@ -86,7 +85,7 @@ document.addEventListener("keydown", function handler(e) {
             position: "top-left",
             index: 0
         });
-        keyboardBtn.addEventListener("click", addFocusToMapNode);
+        keyboardBtn.addEventListener("click", addFocusToMap);
         keyboardBtn.focus();
         keyboardBtn.addEventListener('blur', function blurHandler(e) {
             e.currentTarget.removeEventListener(e.type, blurHandler);
@@ -120,7 +119,7 @@ searchWidget.on("search-start", () => {
 
         view.popup.focus();
         watchUtils.whenFalseOnce(view.popup, "visible", () => {
-            addFocusToMapNode();
+            addFocusToMap();
         });
     });
 });
@@ -238,15 +237,10 @@ function setupKeyHandlers() {
  * focus and the popup isn't visible
  */
 function cleanUp(): void {
-
     if (view.popup.visible) {
         return;
     }
-
-    const mapNode: HTMLDivElement = <HTMLDivElement>document.querySelector(".esri-view-surface");
-
-    mapNode.blur();
-    mapNode.classList.remove("focus");
+    view.blur();
 
     liveNode.classList.add("hidden");
 
@@ -422,41 +416,37 @@ function displayFeatureInfo(key: number): void {
             features: [selectedGraphic]
         });
         watchUtils.whenTrueOnce(view.popup, "visible", () => { view.popup.focus(); })
-        watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMapNode);
+        watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMap);
     }
 }
-function addFocusToMapNode() {
+function addFocusToMap() {
 
-    if (!mapNode) {
-        mapNode = <HTMLDivElement>document.querySelector(".esri-view-surface");
-
-        mapNode.setAttribute("tabindex", "0");
-        document.getElementById("intro").innerHTML = `Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.
+    document.getElementById("intro").innerHTML = `Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.
         For details on your current area press the i key. Press the h key to return to the  starting map location.`
-        mapNode.addEventListener("blur", cleanUp);
-        window.addEventListener("mousedown", (keyEvt: any) => {
-            // Don't show the feature list unless tab is pressed. 
-            // prevent default for text box so search works
-            if (keyEvt.key !== "Tab") {
-                if (keyEvt.target.type !== "text") {
-                    keyEvt.preventDefault();
-                    if (mapNode) {
-                        mapNode.blur();
-                    }
-                }
+
+    window.addEventListener("mousedown", (keyEvt: any) => {
+        // Don't show the feature list unless tab is pressed. 
+        // prevent default for text box so search works
+        if (keyEvt.key !== "Tab") {
+            if (keyEvt.target.type !== "text") {
+                keyEvt.preventDefault();
+                view.blur();
             }
-        });
+        }
+    });
 
-        mapNode.addEventListener("focus", () => {
-            view.focus();
+    view.watch("focused", () => {
+        if (view.focused) {
             liveNode.classList.remove("hidden");
-            mapNode.classList.add("focus");
-
             createGraphic(view);
             setupKeyHandlers();
-        });
-    }
-    mapNode.focus();
+        } else {
+            cleanUp();
+        }
+
+    });
+    1
+    view.focus();
 }
 
 function calculateLocation(address: any) {
