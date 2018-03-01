@@ -541,7 +541,6 @@ function generateDirections(view: MapView) {
 
         view.popup.actions.push(action);
 
-
         view.popup.on("trigger-action", (event) => {
             if (event.action.id = "directions") {
                 routeLayer.removeAll();
@@ -597,6 +596,7 @@ function generateDirections(view: MapView) {
                             }
                         });
                         routeLayer.add(startGraphic);
+                        
                         routeParams.stops.features.push(startGraphic);
                         routeParams.stops.features.push(endGraphic);
                         routeTask.solve(routeParams).then((routeResult: any) => {
@@ -615,11 +615,16 @@ function generateDirections(view: MapView) {
                                 join: "bevel",
                                 cap: "round"
                             };
-
+                            
                             routeLayer.add(route);
 
                             distanceDetails.innerHTML = `Time: ${Math.round(result.directions.totalTime)} Distance: ${Math.round(result.route.attributes.Total_Miles).toFixed(4)} miles `
-                            const details = `<ol class="list-numbered directions-list"> ${result.directions.features.map((feature: Graphic) => `<li data-geometry=${feature.geometry}>${feature.attributes.text}</li>`).join("")} </ol>`
+
+                            const details = `<ol class="list-numbered directions-list">
+                                ${result.directions.features.map((feature: Graphic) =>
+                                    `<li data-geometry=${feature.geometry}>${feature.attributes.text}</li>`
+                                ).join("")} 
+                             </ol>`
 
                             directionsList.innerHTML = details;
 
