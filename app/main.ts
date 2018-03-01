@@ -421,7 +421,7 @@ function displayFeatureInfo(key: number): void {
 }
 function addFocusToMap() {
 
-    document.getElementById("intro").innerHTML = `Use the arrow keys to navigate the map and find features. Use the + key to zoom in to the map and the - key to zoom out.
+    document.getElementById("intro").innerHTML = `Use the arrow keys to navigate the map and find features. Use the plus (+) key to zoom in to the map and the minus (-) key to zoom out.
         For details on your current area press the i key. Press the h key to return to the  starting map location.`
 
     window.addEventListener("mousedown", (keyEvt: any) => {
@@ -596,7 +596,7 @@ function generateDirections(view: MapView) {
                             }
                         });
                         routeLayer.add(startGraphic);
-                        
+
                         routeParams.stops.features.push(startGraphic);
                         routeParams.stops.features.push(endGraphic);
                         routeTask.solve(routeParams).then((routeResult: any) => {
@@ -615,7 +615,7 @@ function generateDirections(view: MapView) {
                                 join: "bevel",
                                 cap: "round"
                             };
-                            
+
                             routeLayer.add(route);
 
                             distanceDetails.innerHTML = `Time: ${Math.round(result.directions.totalTime)} Distance: ${Math.round(result.route.attributes.Total_Miles).toFixed(4)} miles `
