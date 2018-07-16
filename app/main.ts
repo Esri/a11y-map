@@ -3,37 +3,28 @@ import urlUtils = require("esri/core/urlUtils");
 
 import MapView = require("esri/views/MapView");
 import FeatureLayer = require("esri/layers/FeatureLayer");
-import SubLayer = require("esri/layers/support/Sublayer")
-import FeatureLayerView = require("esri/views/layers/FeatureLayerView");
-import MapImageLayer = require("esri/layers/MapImageLayer");
-import Query = require("esri/tasks/support/Query");
+
 
 import watchUtils = require("esri/core/watchUtils");
 import requireUtils = require("esri/core/requireUtils");
 import promiseUtils = require("esri/core/promiseUtils");
 
 import Graphic = require("esri/Graphic");
-import Color = require("esri/Color");
-import Polygon = require("esri/geometry/Polygon");
-import Extent = require("esri/geometry/Extent");
-import Point = require("esri/geometry/Point");
-import SimpleFillSymbol = require("esri/symbols/SimpleFillSymbol");
-import SimpleLineSymbol = require("esri/symbols/SimpleLineSymbol");
 
+import Extent = require("esri/geometry/Extent");
+
+import SimpleFillSymbol = require("esri/symbols/SimpleFillSymbol");
 import Search = require("esri/widgets/Search");
 import Home = require("esri/widgets/Home");
-import PopupTemplate = require('esri/PopupTemplate');
 
 import esri = __esri;
-import { Multipoint } from "esri/geometry";
-import { read } from "fs";
+
 
 let watchHandler: esri.PausableWatchHandle;
 let keyDownHandler: IHandle;
 let keyUpHandler: IHandle;
 
 const queryLayers: any[] = [];
-let displayField: string;
 let webmapId = "7eca81856e22478da183da6a33c24dfe";
 
 let queryResults: Graphic[];
@@ -41,7 +32,7 @@ let pageResults: Graphic[];
 
 let currentPage: number;
 let numberOfPages: number;
-let extent: Extent = null;
+let initialExtent: esri.Extent = null;
 
 
 const liveNode = document.getElementById("liveViewInfo");
@@ -95,41 +86,43 @@ document.addEventListener("keydown", function handler(e) {
 });
 
 const searchWidget = new Search({
-    view: view,
+    view,
     popupEnabled: true,
     popupOpenOnSelect: true,
     autoSelect: true
 });
-const homeWidget = new Home({
-    view: view
-});
+
 view.ui.add({
     component: searchWidget,
     position: "top-left",
     index: 0
 });
-view.ui.add(homeWidget, "top-left");
 
-
-// Only search locally within the view extent 
-searchWidget.sources.getItemAt(0).withinViewEnabled = true;
+searchWidget.watch("activeSource", () => {
+    const source = searchWidget.activeSource as __esri.LocatorSource;
+    if (source) {
+        source.withinViewEnabled = true;
+    }
+});
 
 searchWidget.on("search-start", () => {
     watchUtils.once(view.popup, "title", () => {
-
         view.popup.focus();
         watchUtils.whenFalseOnce(view.popup, "visible", () => {
             addFocusToMap();
         });
     });
 });
-
+const homeWidget = new Home({
+    view
+});
+view.ui.add(homeWidget, "top-left");
 /** 
  * Get the first layer in the map to use as the layer to query for features
  * that appear within the highlighted graphic
 */
-view.then(() => {
-    extent = view.extent.clone();
+view.when(() => {
+    initialExtent = view.extent.clone();
     if (enableDirections) {
         generateDirections(view);
     }
@@ -137,12 +130,12 @@ view.then(() => {
     view.on("layerview-create", (result) => {
 
         if (result.layerView.layer.type === "feature") {
-            const l: FeatureLayer = <FeatureLayer>result.layer;
+            const l: FeatureLayer = <FeatureLayer> result.layer;
             if (l.popupEnabled) {
-                queryLayers.push(result.layerView as FeatureLayerView);
+                queryLayers.push(result.layerView as esri.FeatureLayerView);
             }
         } else if (result.layerView.layer.type === "map-image") {
-            const mapImageLayer = result.layerView.layer as MapImageLayer;
+            const mapImageLayer = result.layerView.layer as esri.MapImageLayer;
             mapImageLayer.sublayers.forEach(layer => {
                 if (layer.popupTemplate) {
                     queryLayers.push(layer);
@@ -194,12 +187,11 @@ function setupKeyHandlers() {
             const key = keyEvt.key;
             if (key === "i") {
                 // reverse geocode and display location information
-                const rectExt = view.graphics.getItemAt(0).geometry as Extent;
+                const rectExt = view.graphics.getItemAt(0).geometry as esri.Extent;
                 let loc = rectExt.center;
                 const worldLocator = searchWidget.sources.getItemAt(0) as esri.LocatorSource;
 
                 worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
-                    console.log("Attributes", JSON.stringify(candidate.attributes));
                     calculateLocation(candidate.attributes);
                 }, (err: Error) => {
                     liveDirNode.innerHTML = "Unable to calculate location";
@@ -227,7 +219,7 @@ function setupKeyHandlers() {
                 liveDirNode.innerHTML = `Moving ${dir}.`;
             } else if (key === "h") {
                 /// Go to the view's initial extent 
-                view.goTo(extent);
+                view.goTo(initialExtent);
             }
         });
     }
@@ -240,7 +232,6 @@ function cleanUp(): void {
     if (view.popup.visible) {
         return;
     }
-    view.blur();
 
     liveNode.classList.add("hidden");
 
@@ -266,31 +257,30 @@ function createGraphic(view: MapView): void {
     view.graphics.removeAll();
     view.popup.visible = false;
 
-    const fillSymbol = new SimpleFillSymbol({
-        color: new Color([0, 0, 0, 0.2]),
-        outline: new SimpleLineSymbol({
-            color: new Color([0, 0, 0, 0.8]),
-            width: 1
-        })
-    });
+
     const centerPoint = view.center;
     const tolerance = view.scale / 60;
-    const extent = new Extent({
-        xmin: centerPoint.x - tolerance,
-        ymin: centerPoint.y - tolerance,
-        xmax: centerPoint.x + tolerance,
-        ymax: centerPoint.y + tolerance,
-        spatialReference: view.center.spatialReference
-    });
+
     const graphic = new Graphic({
-        geometry: extent,
-        symbol: fillSymbol
+        geometry: new Extent({
+            xmin: centerPoint.x - tolerance,
+            ymin: centerPoint.y - tolerance,
+            xmax: centerPoint.x + tolerance,
+            ymax: centerPoint.y + tolerance,
+            spatialReference: view.center.spatialReference
+        }),
+        symbol: new SimpleFillSymbol({
+            color: ([0, 0, 0, 0.2]),
+            outline: ({
+                color: ([0, 0, 0, 0.8]),
+                width: 1
+            })
+        })
     });
 
     view.graphics.add(graphic);
-
     if (queryLayers && queryLayers.length > 0) {
-        queryFeatures(graphic);
+        queryFeatures(graphic.geometry as esri.Extent);
     }
 }
 /**
@@ -298,38 +288,25 @@ function createGraphic(view: MapView): void {
  * currently setup for just the first layer in web map
  * @param queryGraphic Extent graphic used drawn on the map and used to select features
  */
-function queryFeatures(queryGraphic: Graphic): void {
-    const query = new Query({
-        geometry: queryGraphic.geometry
-    });
-
+function queryFeatures(queryGeometry: esri.Extent): void {
     queryResults = [];
     pageResults = null;
     currentPage = 1;
-
     promiseUtils.eachAlways(queryLayers.map((layerView) => {
-        let flayer: FeatureLayerView | SubLayer;
-        if (layerView.layer.type && layerView.layer.type === "map-image") {
-            query.returnGeometry = true;
-            query.outFields = ["*"]
-            flayer = layerView as SubLayer;
-            return layerView.queryFeatures(query).then((queryResults: esri.FeatureSet) => {
-                if (queryResults.features && queryResults.features.length && queryResults.features.length > 0) {
-                    return queryResults.features;
-                }
-            });
-        } else {
-            flayer = layerView as FeatureLayerView;
-            return layerView.queryFeatures(query).then((queryResults: Graphic[]) => {
-
-                return queryResults;
-            });
-        }
-    })).then((results: __esri.EachAlwaysResult[]) => {
+        // if (layerView.layer.type && layerView.layer.type === "map-image") {
+        const flQuery = layerView.layer.createQuery();
+        flQuery.geometry = queryGeometry;
+        flQuery.returnGeometry = true;
+        flQuery.outFields = ["*"];
+        flQuery.spatialRelationship = "intersects";
+        return layerView.queryFeatures(flQuery).then((queryResults: esri.FeatureSet | Graphic[]) => {
+            return queryResults;
+        });
+    })).then((results: esri.EachAlwaysResult[]) => {
         queryResults = [];
         results.forEach(result => {
-            if (result && result.value) {
-                result.value.forEach((val: Graphic) => {
+            if (result && result.value && result.value.features) {
+                result.value.features.forEach((val: Graphic) => {
                     queryResults.push(val);
                 });
             }
@@ -348,7 +325,7 @@ function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean)
     let updateContent: string;
     if (displayResults && displayResults.length > 0) {
         let updateValues: string[] = displayResults.map((graphic: Graphic, index: number) => {
-            let titleTemplate = graphic.popupTemplate.title as string;
+            let titleTemplate = graphic.getEffectivePopupTemplate().title as string;
             // find curly brace values
             for (let key in graphic.attributes) {
                 if (graphic.attributes.hasOwnProperty(key)) {
@@ -405,9 +382,9 @@ function displayFeatureInfo(key: number): void {
     const selectedGraphic = pageResults[key - 1];
 
     if (selectedGraphic) {
-        let location: Point;
+        let location: esri.Point;
         if (selectedGraphic.geometry.type === "point") {
-            location = selectedGraphic.geometry as Point;
+            location = selectedGraphic.geometry as esri.Point;
         } else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
             location = selectedGraphic.geometry.extent.center;
         }
@@ -430,7 +407,7 @@ function addFocusToMap() {
         if (keyEvt.key !== "Tab") {
             if (keyEvt.target.type !== "text") {
                 keyEvt.preventDefault();
-                view.blur();
+                cleanUp();
             }
         }
     });
@@ -445,7 +422,6 @@ function addFocusToMap() {
         }
 
     });
-    1
     view.focus();
 }
 
@@ -509,9 +485,8 @@ function generateDirections(view: MapView) {
         panel.appendChild(directionsList);
 
         const expand = new Expand({
-            view: view,
-            content: panel,
-            expandIconClass: "esri-icon-directions"
+            view,
+            content: panel
         });
 
         const routeLayer = new GraphicsLayer({
@@ -544,7 +519,6 @@ function generateDirections(view: MapView) {
         view.popup.on("trigger-action", (event) => {
             if (event.action.id = "directions") {
                 routeLayer.removeAll();
-                const selFeature = view.popup.selectedFeature.clone();
                 view.popup.close();
                 view.ui.add(expand, "top-right");
 
@@ -641,7 +615,7 @@ function generateDirections(view: MapView) {
 function createSearch(node: HTMLDivElement, placeholder: string) {
 
     const search = new Search({
-        view: view,
+        view,
         popupEnabled: false,
         popupOpenOnSelect: false,
         autoSelect: false,
@@ -649,7 +623,7 @@ function createSearch(node: HTMLDivElement, placeholder: string) {
     });
 
     search.on("search-clear", () => {
-        const layer = view.map.findLayerById("routes") as __esri.GraphicsLayer;
+        const layer = view.map.findLayerById("routes") as esri.GraphicsLayer;
         layer.removeAll();
 
         document.getElementById("distanceDetails").innerHTML = "";

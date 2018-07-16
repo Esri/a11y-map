@@ -1,19 +1,16 @@
-define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/tasks/support/Query", "esri/core/watchUtils", "esri/core/requireUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/Color", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/symbols/SimpleLineSymbol", "esri/widgets/Search", "esri/widgets/Home"], function (require, exports, WebMap, urlUtils, MapView, Query, watchUtils, requireUtils, promiseUtils, Graphic, Color, Extent, SimpleFillSymbol, SimpleLineSymbol, Search, Home) {
+define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/core/watchUtils", "esri/core/requireUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home"], function (require, exports, WebMap, urlUtils, MapView, watchUtils, requireUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home) {
     "use strict";
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
+    Object.defineProperty(exports, "__esModule", { value: true });
     var watchHandler;
     var keyDownHandler;
     var keyUpHandler;
     var queryLayers = [];
-    var displayField;
     var webmapId = "7eca81856e22478da183da6a33c24dfe";
     var queryResults;
     var pageResults;
     var currentPage;
     var numberOfPages;
-    var extent = null;
+    var initialExtent = null;
     var liveNode = document.getElementById("liveViewInfo");
     var liveDirNode = document.getElementById("dir");
     var liveDetailsNode = document.getElementById("details");
@@ -65,17 +62,17 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         popupOpenOnSelect: true,
         autoSelect: true
     });
-    var homeWidget = new Home({
-        view: view
-    });
     view.ui.add({
         component: searchWidget,
         position: "top-left",
         index: 0
     });
-    view.ui.add(homeWidget, "top-left");
-    // Only search locally within the view extent 
-    searchWidget.sources.getItemAt(0).withinViewEnabled = true;
+    searchWidget.watch("activeSource", function () {
+        var source = searchWidget.activeSource;
+        if (source) {
+            source.withinViewEnabled = true;
+        }
+    });
     searchWidget.on("search-start", function () {
         watchUtils.once(view.popup, "title", function () {
             view.popup.focus();
@@ -84,12 +81,16 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             });
         });
     });
+    var homeWidget = new Home({
+        view: view
+    });
+    view.ui.add(homeWidget, "top-left");
     /**
      * Get the first layer in the map to use as the layer to query for features
      * that appear within the highlighted graphic
-     */
-    view.then(function () {
-        extent = view.extent.clone();
+    */
+    view.when(function () {
+        initialExtent = view.extent.clone();
         if (enableDirections) {
             generateDirections(view);
         }
@@ -99,7 +100,8 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 if (l.popupEnabled) {
                     queryLayers.push(result.layerView);
                 }
-            } else if (result.layerView.layer.type === "map-image") {
+            }
+            else if (result.layerView.layer.type === "map-image") {
                 var mapImageLayer = result.layerView.layer;
                 mapImageLayer.sublayers.forEach(function (layer) {
                     if (layer.popupTemplate) {
@@ -109,13 +111,13 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             }
         });
     });
-
     function setupKeyHandlers() {
         if (!watchHandler) {
             watchHandler = watchUtils.pausable(view, "extent", function () {
                 createGraphic(view);
             });
-        } else {
+        }
+        else {
             watchHandler.resume();
         }
         if (!keyUpHandler) {
@@ -126,10 +128,14 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 var key = keyEvt.key;
                 if (pageResults && pageResults.length && key <= pageResults.length) {
                     displayFeatureInfo(key);
-                } else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
+                }
+                // not on the first page and more than one page
+                else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
                     currentPage -= 1;
                     generateList();
-                } else if (key === "9" && numberOfPages > 1) {
+                }
+                // we have more than one page
+                else if (key === "9" && numberOfPages > 1) {
                     currentPage += 1;
                     generateList();
                 }
@@ -147,12 +153,12 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                     var loc = rectExt.center;
                     var worldLocator = searchWidget.sources.getItemAt(0);
                     worldLocator.locator.locationToAddress(loc, 1000).then(function (candidate) {
-                        console.log("Attributes", JSON.stringify(candidate.attributes));
                         calculateLocation(candidate.attributes);
                     }, function (err) {
                         liveDirNode.innerHTML = "Unable to calculate location";
                     });
-                } else if (key === "ArrowUp" || key === "ArrowDown" ||
+                }
+                else if (key === "ArrowUp" || key === "ArrowDown" ||
                     key === "ArrowRight" || key === "ArrowLeft") {
                     var dir = void 0;
                     switch (key) {
@@ -170,9 +176,10 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                             break;
                     }
                     liveDirNode.innerHTML = "Moving " + dir + ".";
-                } else if (key === "h") {
+                }
+                else if (key === "h") {
                     /// Go to the view's initial extent 
-                    view.goTo(extent);
+                    view.goTo(initialExtent);
                 }
             });
         }
@@ -185,7 +192,6 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         if (view.popup.visible) {
             return;
         }
-        view.blur();
         liveNode.classList.add("hidden");
         liveDetailsNode.innerHTML = null;
         liveDirNode.innerHTML = null;
@@ -207,29 +213,27 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     function createGraphic(view) {
         view.graphics.removeAll();
         view.popup.visible = false;
-        var fillSymbol = new SimpleFillSymbol({
-            color: new Color([0, 0, 0, 0.2]),
-            outline: new SimpleLineSymbol({
-                color: new Color([0, 0, 0, 0.8]),
-                width: 1
-            })
-        });
         var centerPoint = view.center;
         var tolerance = view.scale / 60;
-        var extent = new Extent({
-            xmin: centerPoint.x - tolerance,
-            ymin: centerPoint.y - tolerance,
-            xmax: centerPoint.x + tolerance,
-            ymax: centerPoint.y + tolerance,
-            spatialReference: view.center.spatialReference
-        });
         var graphic = new Graphic({
-            geometry: extent,
-            symbol: fillSymbol
+            geometry: new Extent({
+                xmin: centerPoint.x - tolerance,
+                ymin: centerPoint.y - tolerance,
+                xmax: centerPoint.x + tolerance,
+                ymax: centerPoint.y + tolerance,
+                spatialReference: view.center.spatialReference
+            }),
+            symbol: new SimpleFillSymbol({
+                color: ([0, 0, 0, 0.2]),
+                outline: ({
+                    color: ([0, 0, 0, 0.8]),
+                    width: 1
+                })
+            })
         });
         view.graphics.add(graphic);
         if (queryLayers && queryLayers.length > 0) {
-            queryFeatures(graphic);
+            queryFeatures(graphic.geometry);
         }
     }
     /**
@@ -237,35 +241,25 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
      * currently setup for just the first layer in web map
      * @param queryGraphic Extent graphic used drawn on the map and used to select features
      */
-    function queryFeatures(queryGraphic) {
-        var query = new Query({
-            geometry: queryGraphic.geometry
-        });
+    function queryFeatures(queryGeometry) {
         queryResults = [];
         pageResults = null;
         currentPage = 1;
         promiseUtils.eachAlways(queryLayers.map(function (layerView) {
-            var flayer;
-            if (layerView.layer.type && layerView.layer.type === "map-image") {
-                query.returnGeometry = true;
-                query.outFields = ["*"];
-                flayer = layerView;
-                return layerView.queryFeatures(query).then(function (queryResults) {
-                    if (queryResults.features && queryResults.features.length && queryResults.features.length > 0) {
-                        return queryResults.features;
-                    }
-                });
-            } else {
-                flayer = layerView;
-                return layerView.queryFeatures(query).then(function (queryResults) {
-                    return queryResults;
-                });
-            }
+            // if (layerView.layer.type && layerView.layer.type === "map-image") {
+            var flQuery = layerView.layer.createQuery();
+            flQuery.geometry = queryGeometry;
+            flQuery.returnGeometry = true;
+            flQuery.outFields = ["*"];
+            flQuery.spatialRelationship = "intersects";
+            return layerView.queryFeatures(flQuery).then(function (queryResults) {
+                return queryResults;
+            });
         })).then(function (results) {
             queryResults = [];
             results.forEach(function (result) {
-                if (result && result.value) {
-                    result.value.forEach(function (val) {
+                if (result && result.value && result.value.features) {
+                    result.value.features.forEach(function (val) {
                         queryResults.push(val);
                     });
                 }
@@ -274,17 +268,17 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             liveDetailsNode.innerHTML = "";
             if (queryResults.length && queryResults.length > 21) {
                 liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Press the plus key to zoom in and reduce number of results.";
-            } else {
+            }
+            else {
                 generateList();
             }
         });
     }
-
     function updateLiveInfo(displayResults, prev, next) {
         var updateContent;
         if (displayResults && displayResults.length > 0) {
             var updateValues = displayResults.map(function (graphic, index) {
-                var titleTemplate = graphic.popupTemplate.title;
+                var titleTemplate = graphic.getEffectivePopupTemplate().title;
                 // find curly brace values
                 for (var key in graphic.attributes) {
                     if (graphic.attributes.hasOwnProperty(key)) {
@@ -302,7 +296,8 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 updateValues.push("<span class=\"feature-label\"><span class=\"feature-index\">8</span>View previous results</span>");
             }
             updateContent = updateValues.join(" ");
-        } else {
+        }
+        else {
             updateContent = "No features found";
         }
         liveDetailsNode.innerHTML = updateContent;
@@ -331,20 +326,18 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             var location_1;
             if (selectedGraphic.geometry.type === "point") {
                 location_1 = selectedGraphic.geometry;
-            } else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
+            }
+            else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
                 location_1 = selectedGraphic.geometry.extent.center;
             }
             view.popup.open({
                 location: location_1,
                 features: [selectedGraphic]
             });
-            watchUtils.whenTrueOnce(view.popup, "visible", function () {
-                view.popup.focus();
-            });
+            watchUtils.whenTrueOnce(view.popup, "visible", function () { view.popup.focus(); });
             watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMap);
         }
     }
-
     function addFocusToMap() {
         document.getElementById("intro").innerHTML = "Use the arrow keys to navigate the map and find features. Use the plus (+) key to zoom in to the map and the minus (-) key to zoom out.\n        For details on your current area press the i key. Press the h key to return to the  starting map location.";
         window.addEventListener("mousedown", function (keyEvt) {
@@ -353,7 +346,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             if (keyEvt.key !== "Tab") {
                 if (keyEvt.target.type !== "text") {
                     keyEvt.preventDefault();
-                    view.blur();
+                    cleanUp();
                 }
             }
         });
@@ -362,30 +355,32 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 liveNode.classList.remove("hidden");
                 createGraphic(view);
                 setupKeyHandlers();
-            } else {
+            }
+            else {
                 cleanUp();
             }
         });
-        1;
         view.focus();
     }
-
     function calculateLocation(address) {
         var displayValue;
         if (view.scale > 12000000) {
             displayValue = address.CountryCode || address.Subregion;
-        } else if (view.scale > 3000000) {
+        }
+        else if (view.scale > 3000000) {
             displayValue = address.Region || address.Subregion;
-        } else if (view.scale > 160000) {
+        }
+        else if (view.scale > 160000) {
             displayValue = address.City || address.Region || address.Subregion;
-        } else if (view.scale > 40000) {
+        }
+        else if (view.scale > 40000) {
             displayValue = address.Neighborhood || address.Address;
-        } else {
+        }
+        else {
             displayValue = address.Match_addr || address.Address;
         }
         liveDirNode.innerHTML = "Currently searching near " + displayValue;
     }
-
     function generateDirections(view) {
         // Once the JSAPI directons widget supports adding a pre-created location we'll pull this out and use the 
         // Directions widget instead
@@ -397,12 +392,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             "esri/widgets/Expand",
             "esri/widgets/Search"
         ]).then(function (_a) {
-            var RouteTask = _a[0],
-                GraphicsLayer = _a[1],
-                RouteParameters = _a[2],
-                FeatureSet = _a[3],
-                Expand = _a[4],
-                Search = _a[5];
+            var RouteTask = _a[0], GraphicsLayer = _a[1], RouteParameters = _a[2], FeatureSet = _a[3], Expand = _a[4], Search = _a[5];
             var routeUrl = "https://utility.arcgis.com/usrsvcs/appservices/558KNZRaOjSBlsNN/rest/services/World/Route/NAServer/Route_World";
             var panel = document.createElement("div");
             panel.classList.add("panel");
@@ -423,8 +413,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             panel.appendChild(directionsList);
             var expand = new Expand({
                 view: view,
-                content: panel,
-                expandIconClass: "esri-icon-directions"
+                content: panel
             });
             var routeLayer = new GraphicsLayer({
                 id: "routes"
@@ -449,13 +438,13 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             view.popup.on("trigger-action", function (event) {
                 if (event.action.id = "directions") {
                     routeLayer.removeAll();
-                    var selFeature = view.popup.selectedFeature.clone();
                     view.popup.close();
                     view.ui.add(expand, "top-right");
                     expand.watch("expanded", function () {
                         if (expand.expanded) {
                             endSearch.focus();
-                        } else {
+                        }
+                        else {
                             view.focus();
                         }
                     });
@@ -482,8 +471,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                         directionsList.innerHTML = "";
                         if (results.numResults > 0) {
                             var startGraphic = new Graphic({
-                                geometry: results.results[0].results[0].feature.geometry,
-                                symbol: {
+                                geometry: results.results[0].results[0].feature.geometry, symbol: {
                                     type: "simple-marker",
                                     path: "M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z",
                                     color: "#0892d0",
@@ -524,7 +512,6 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             });
         });
     }
-
     function createSearch(node, placeholder) {
         var search = new Search({
             view: view,
@@ -542,10 +529,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         var source = search.sources;
         var locator = source.items[0];
         locator.placeholder = placeholder;
-        locator.filter = {
-            where: null,
-            geometry: view.extent
-        };
+        locator.filter = { where: null, geometry: view.extent };
         return search;
     }
 });
