@@ -1,4 +1,4 @@
-define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/core/watchUtils", "esri/core/requireUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home"], function (require, exports, WebMap, urlUtils, MapView, watchUtils, requireUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home) {
+define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home"], function (require, exports, WebMap, urlUtils, MapView, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var watchHandler;
@@ -15,14 +15,10 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var liveDirNode = document.getElementById("dir");
     var liveDetailsNode = document.getElementById("details");
     var numberPerPage = 7;
-    var enableDirections = false;
     var urlObject = urlUtils.urlToObject(document.location.href);
     if (urlObject && urlObject.query) {
         if (urlObject.query.webmap) {
             webmapId = urlObject.query.webmap;
-        }
-        if (urlObject.query.directions) {
-            enableDirections = true;
         }
     }
     var map = new WebMap({
@@ -67,7 +63,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         position: "top-left",
         index: 0
     });
-    searchWidget.watch("activeSource", function () {
+    searchWidget.watch("activeSource", function (s) {
         var source = searchWidget.activeSource;
         if (source) {
             source.withinViewEnabled = true;
@@ -91,24 +87,28 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     */
     view.when(function () {
         initialExtent = view.extent.clone();
-        if (enableDirections) {
-            generateDirections(view);
-        }
         view.on("layerview-create", function (result) {
+            var l;
             if (result.layerView.layer.type === "feature") {
-                var l = result.layer;
+                l = result.layer;
                 if (l.popupEnabled) {
                     queryLayers.push(result.layerView);
                 }
             }
             else if (result.layerView.layer.type === "map-image") {
-                var mapImageLayer = result.layerView.layer;
-                mapImageLayer.sublayers.forEach(function (layer) {
+                l = result.layerView.layer;
+                l.sublayers.forEach(function (layer) {
                     if (layer.popupTemplate) {
                         queryLayers.push(layer);
                     }
                 });
             }
+            // add layer as locator to search widget 
+            searchWidget.sources.push({
+                featureLayer: l,
+                placeholder: "Search " + l.title + " layer",
+                withinViewEnabled: true
+            });
         });
     });
     function setupKeyHandlers() {
@@ -196,7 +196,9 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         liveDetailsNode.innerHTML = null;
         liveDirNode.innerHTML = null;
         view.graphics.removeAll();
-        watchHandler.pause();
+        if (watchHandler) {
+            watchHandler.pause();
+        }
         if (keyDownHandler) {
             keyDownHandler.remove();
             keyDownHandler = null;
@@ -380,157 +382,6 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             displayValue = address.Match_addr || address.Address;
         }
         liveDirNode.innerHTML = "Currently searching near " + displayValue;
-    }
-    function generateDirections(view) {
-        // Once the JSAPI directons widget supports adding a pre-created location we'll pull this out and use the 
-        // Directions widget instead
-        requireUtils.when(require, [
-            "esri/tasks/RouteTask",
-            "esri/layers/GraphicsLayer",
-            "esri/tasks/support/RouteParameters",
-            "esri/tasks/support/FeatureSet",
-            "esri/widgets/Expand",
-            "esri/widgets/Search"
-        ]).then(function (_a) {
-            var RouteTask = _a[0], GraphicsLayer = _a[1], RouteParameters = _a[2], FeatureSet = _a[3], Expand = _a[4], Search = _a[5];
-            var routeUrl = "https://utility.arcgis.com/usrsvcs/appservices/558KNZRaOjSBlsNN/rest/services/World/Route/NAServer/Route_World";
-            var panel = document.createElement("div");
-            panel.classList.add("panel");
-            var directionsList = document.createElement("div");
-            directionsList.id = "directionsList";
-            var distanceDetails = document.createElement("div");
-            distanceDetails.id = "distanceDetails";
-            distanceDetails.classList.add("text-darker-gray", "driving-details", "text-rule", "text-darker-gray");
-            directionsList.setAttribute("role", "alert");
-            directionsList.classList.add("directions-list");
-            directionsList.setAttribute("aria-atomic", "true");
-            directionsList.setAttribute("aria-live", "polite");
-            var searchContainer = document.createElement("div");
-            var endSearchContainer = document.createElement("div");
-            panel.appendChild(searchContainer);
-            panel.appendChild(endSearchContainer);
-            panel.appendChild(distanceDetails);
-            panel.appendChild(directionsList);
-            var expand = new Expand({
-                view: view,
-                content: panel
-            });
-            var routeLayer = new GraphicsLayer({
-                id: "routes"
-            });
-            view.map.add(routeLayer);
-            var routeParams = new RouteParameters({
-                stops: new FeatureSet(),
-                returnDirections: true,
-                directionsOutputType: "complete"
-            });
-            var routeTask = new RouteTask({
-                url: routeUrl
-            });
-            var startSearch = createSearch(searchContainer, "Enter start");
-            var endSearch = createSearch(endSearchContainer, "Enter destination");
-            var action = {
-                title: "Directions",
-                id: "directions",
-                className: "esri-icon-directions"
-            };
-            view.popup.actions.push(action);
-            view.popup.on("trigger-action", function (event) {
-                if (event.action.id = "directions") {
-                    routeLayer.removeAll();
-                    view.popup.close();
-                    view.ui.add(expand, "top-right");
-                    expand.watch("expanded", function () {
-                        if (expand.expanded) {
-                            endSearch.focus();
-                        }
-                        else {
-                            view.focus();
-                        }
-                    });
-                    expand.expand();
-                    var location_2 = view.popup.location;
-                    startSearch.searchTerm = location_2.x + ", " + location_2.y;
-                    var endGraphic_1 = new Graphic({
-                        geometry: location_2,
-                        symbol: {
-                            type: "simple-marker",
-                            path: "M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z",
-                            color: "#00ff00",
-                            outline: {
-                                width: "1",
-                                color: "#fff"
-                            },
-                            size: "26px"
-                        }
-                    });
-                    routeLayer.add(endGraphic_1);
-                    endSearch.on("search-complete", function (results) {
-                        routeLayer.clear;
-                        distanceDetails.innerHTML = "";
-                        directionsList.innerHTML = "";
-                        if (results.numResults > 0) {
-                            var startGraphic = new Graphic({
-                                geometry: results.results[0].results[0].feature.geometry, symbol: {
-                                    type: "simple-marker",
-                                    path: "M0-48c-9.8 0-17.7 7.8-17.7 17.4 0 15.5 17.7 30.6 17.7 30.6s17.7-15.4 17.7-30.6c0-9.6-7.9-17.4-17.7-17.4z",
-                                    color: "#0892d0",
-                                    outline: {
-                                        width: "1",
-                                        color: "#fff"
-                                    },
-                                    size: "26px"
-                                }
-                            });
-                            routeLayer.add(startGraphic);
-                            routeParams.stops.features.push(startGraphic);
-                            routeParams.stops.features.push(endGraphic_1);
-                            routeTask.solve(routeParams).then(function (routeResult) {
-                                var result = routeResult.routeResults[0];
-                                var route = result.route;
-                                route.symbol = {
-                                    type: "simple-line",
-                                    color: "#00b3fd",
-                                    width: 4,
-                                    outline: {
-                                        color: "#fff",
-                                        width: "1"
-                                    },
-                                    join: "bevel",
-                                    cap: "round"
-                                };
-                                routeLayer.add(route);
-                                distanceDetails.innerHTML = "Time: " + Math.round(result.directions.totalTime) + " Distance: " + Math.round(result.route.attributes.Total_Miles).toFixed(4) + " miles ";
-                                var details = "<ol class=\"list-numbered directions-list\">\n                                " + result.directions.features.map(function (feature) {
-                                    return "<li data-geometry=" + feature.geometry + ">" + feature.attributes.text + "</li>";
-                                }).join("") + " \n                             </ol>";
-                                directionsList.innerHTML = details;
-                            });
-                        }
-                    });
-                }
-            });
-        });
-    }
-    function createSearch(node, placeholder) {
-        var search = new Search({
-            view: view,
-            popupEnabled: false,
-            popupOpenOnSelect: false,
-            autoSelect: false,
-            container: node
-        });
-        search.on("search-clear", function () {
-            var layer = view.map.findLayerById("routes");
-            layer.removeAll();
-            document.getElementById("distanceDetails").innerHTML = "";
-            document.getElementById("directionsList").innerHTML = "";
-        });
-        var source = search.sources;
-        var locator = source.items[0];
-        locator.placeholder = placeholder;
-        locator.filter = { where: null, geometry: view.extent };
-        return search;
     }
 });
 //# sourceMappingURL=main.js.map

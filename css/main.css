@@ -92,3 +92,15 @@
     #directionsList {
         overflow: auto;
     }
+
+    .esri-search__source {
+        margin: 0;
+    }
+
+    .esri-directions li {
+        margin: 0;
+    }
+
+    .esri-search__suggestions-list li {
+        margin: 0;
+    }
