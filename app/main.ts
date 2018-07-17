@@ -12,6 +12,7 @@ import Extent = require("esri/geometry/Extent");
 import SimpleFillSymbol = require("esri/symbols/SimpleFillSymbol");
 import Search = require("esri/widgets/Search");
 import Home = require("esri/widgets/Home");
+import Locator = require("esri/tasks/Locator");
 
 import esri = __esri;
 
@@ -178,21 +179,20 @@ function setupKeyHandlers() {
          * Handle info and dir keys 
          */
 
+        const worldLocator = new Locator({
+            url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
+        });
         keyDownHandler = view.on("key-down", (keyEvt: any) => {
             const key = keyEvt.key;
             if (key === "i") {
                 // reverse geocode and display location information
                 const rectExt = view.graphics.getItemAt(0).geometry as esri.Extent;
                 let loc = rectExt.center;
-                const worldLocator = searchWidget.sources.getItemAt(0) as esri.LocatorSource;
-
-                worldLocator.locator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
+                worldLocator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
                     calculateLocation(candidate.attributes);
                 }, (err: Error) => {
                     liveDirNode.innerHTML = "Unable to calculate location";
                 });
-
-
             } else if (key === "ArrowUp" || key === "ArrowDown" ||
                 key === "ArrowRight" || key === "ArrowLeft") {
                 let dir: "north" | "south" | "east" | "west";
@@ -386,6 +386,7 @@ function displayFeatureInfo(key: number): void {
         } else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
             location = selectedGraphic.geometry.extent.center;
         }
+        liveDetailsNode.innerHTML = "Displaying content for selected feature";
         view.popup.open({
             location: location,
             features: [selectedGraphic]
@@ -441,6 +442,7 @@ function calculateLocation(address: any) {
     else {
         displayValue = address.Match_addr || address.Address;
     }
+    console.log("display", displayValue);
     liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
 }
 

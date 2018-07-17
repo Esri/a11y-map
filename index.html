@@ -26,16 +26,17 @@
 </head>
 
 <body>
-    <div id="viewDiv">
+    <div id="viewDiv" role="application">
     </div>
-    <div id="liveViewInfo" class="hidden live-info" role="navigation">
-        <div id="intro" aria-live="polite" role="status"></div>
-        <!-- role="alert"  removed role=alert since this seems to cause duplicate speaking with voice over-->
-        <div id="details" aria-live="polite" aria-atomic="true" class="detail-info"></div>
-        <div aria-live="polite">
+    <div aria-describedby="intro" id="liveViewInfo" class="hidden live-info" role="navigation">
+        <div aria-live="polite" role="status">
+            <p id="intro"></p>
+        </div>
+        <div id="liveArea" aria-atomic="true" aria-live="polite">
             <div class="directions-info">
                 <span id="dir"></span>
             </div>
+            <div id="details" class="detail-info"></div>
         </div>
     </div>
     <button role="main" id="keyboard" class="hidden esri-widget esri-component esri-widget-button keyboard-btn esri-icon-announcement"

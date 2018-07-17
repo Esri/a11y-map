@@ -1,4 +1,4 @@
-define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home"], function (require, exports, WebMap, urlUtils, MapView, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home) {
+define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home", "esri/tasks/Locator"], function (require, exports, WebMap, urlUtils, MapView, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home, Locator) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var watchHandler;
@@ -145,14 +145,16 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             /**
              * Handle info and dir keys
              */
+            var worldLocator_1 = new Locator({
+                url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
+            });
             keyDownHandler = view.on("key-down", function (keyEvt) {
                 var key = keyEvt.key;
                 if (key === "i") {
                     // reverse geocode and display location information
                     var rectExt = view.graphics.getItemAt(0).geometry;
                     var loc = rectExt.center;
-                    var worldLocator = searchWidget.sources.getItemAt(0);
-                    worldLocator.locator.locationToAddress(loc, 1000).then(function (candidate) {
+                    worldLocator_1.locationToAddress(loc, 1000).then(function (candidate) {
                         calculateLocation(candidate.attributes);
                     }, function (err) {
                         liveDirNode.innerHTML = "Unable to calculate location";
@@ -332,6 +334,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
                 location_1 = selectedGraphic.geometry.extent.center;
             }
+            liveDetailsNode.innerHTML = "Displaying content for selected feature";
             view.popup.open({
                 location: location_1,
                 features: [selectedGraphic]
@@ -381,6 +384,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         else {
             displayValue = address.Match_addr || address.Address;
         }
+        console.log("display", displayValue);
         liveDirNode.innerHTML = "Currently searching near " + displayValue;
     }
 });
