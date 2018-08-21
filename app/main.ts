@@ -220,6 +220,26 @@ function setupKeyHandlers() {
     }
 }
 /**
+ * Toggles on/off the key handlers for Pop-up boxes based off their visibility
+ */
+function popupKeyHandler():void {
+    if(view.popup.visible){
+        (<HTMLElement>view.popup.container).addEventListener('keydown', popupKeyHandlerFunction);
+    } else {
+        (<HTMLElement>view.popup.container).removeEventListener('keydown', popupKeyHandlerFunction);
+    }
+}
+/**
+ * Adds key handlers to Pop-up boxes 
+ * @param keyEvt
+ */
+function popupKeyHandlerFunction(keyEvt: any): void {
+    const key = keyEvt.key;
+    if (key === "Escape") {
+        view.popup.close();
+    }
+}
+/**
  * Clean up the highlight graphic and feature list if the map loses 
  * focus and the popup isn't visible
  */
@@ -386,13 +406,19 @@ function displayFeatureInfo(key: number): void {
         } else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
             location = selectedGraphic.geometry.extent.center;
         }
-        liveDetailsNode.innerHTML = "Displaying content for selected feature";
+        liveDetailsNode.innerHTML = "Displaying content for selected feature. Press <strong>esc</strong> to close.";
         view.popup.open({
             location: location,
             features: [selectedGraphic]
         });
-        watchUtils.whenTrueOnce(view.popup, "visible", () => { view.popup.focus(); })
-        watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMap);
+        watchUtils.whenTrueOnce(view.popup, "visible", () => { 
+            view.popup.focus(); 
+            popupKeyHandler();
+        })
+        watchUtils.whenFalseOnce(view.popup, "visible", () => {
+            addFocusToMap();
+            popupKeyHandler();
+        });
     }
 }
 function addFocusToMap() {

@@ -187,6 +187,27 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         }
     }
     /**
+     * Toggles on/off the key handlers for Pop-up boxes based off their visibility
+     */
+    function popupKeyHandler() {
+        if (view.popup.visible) {
+            view.popup.container.addEventListener('keydown', popupKeyHandlerFunction);
+        }
+        else {
+            view.popup.container.removeEventListener('keydown', popupKeyHandlerFunction);
+        }
+    }
+    /**
+     * Adds key handlers to Pop-up boxes
+     * @param keyEvt
+     */
+    function popupKeyHandlerFunction(keyEvt) {
+        var key = keyEvt.key;
+        if (key === "Escape") {
+            view.popup.close();
+        }
+    }
+    /**
      * Clean up the highlight graphic and feature list if the map loses
      * focus and the popup isn't visible
      */
@@ -334,13 +355,19 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
                 location_1 = selectedGraphic.geometry.extent.center;
             }
-            liveDetailsNode.innerHTML = "Displaying content for selected feature";
+            liveDetailsNode.innerHTML = "Displaying content for selected feature. Press <strong>esc</strong> to close.";
             view.popup.open({
                 location: location_1,
                 features: [selectedGraphic]
             });
-            watchUtils.whenTrueOnce(view.popup, "visible", function () { view.popup.focus(); });
-            watchUtils.whenFalseOnce(view.popup, "visible", addFocusToMap);
+            watchUtils.whenTrueOnce(view.popup, "visible", function () {
+                view.popup.focus();
+                popupKeyHandler();
+            });
+            watchUtils.whenFalseOnce(view.popup, "visible", function () {
+                addFocusToMap();
+                popupKeyHandler();
+            });
         }
     }
     function addFocusToMap() {
