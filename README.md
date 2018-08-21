@@ -2,9 +2,9 @@
 A prototype app to test adding keyboard interaction (similar to Google's a11y behavior)with Esri's ArcGIS API for JavaScript version 4. 
 
 
-[View it live](https://arcgis.github.io/a11y-map/)
+[View it live](https://kellyhutchins.github.io/a11y-map/index.html)
 
-![App](https://raw.githubusercontent.com/ArcGIS/a11y-map/master/a11y-map.png)
+![App](a11y-map.png)
 
 ## Features
 To see the a11y features tab into the map. Once you do so you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard. 
@@ -44,7 +44,7 @@ Find a bug or want to request a new feature?  Please let us know by submitting a
 Esri welcomes contributions from anyone and everyone. Please see our [guidelines for contributing](https://github.com/esri/contributing).
 
 ## Licensing
-Copyright 2016 Esri
+Copyright 2018 Esri
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,4 +58,4 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-A copy of the license is available in the repository's [license.txt]( https://raw.githubusercontent.com/ArcGIS/a11y-map/master/LICENSE) file.
+A copy of the license is available in the repository's [license.txt](LICENSE) file.
