@@ -2,7 +2,7 @@
 A prototype app to test adding keyboard interaction (similar to Google's a11y behavior)with Esri's ArcGIS API for JavaScript version 4. 
 
 
-[View it live](https://kellyhutchins.github.io/a11y-map/index.html)
+[View it live](https://esri.github.io/a11y-map/)
 
 ![App](a11y-map.png)
 
