@@ -104,3 +104,51 @@
     .esri-search__suggestions-list li {
         margin: 0;
     }
+
+    .esri-a11y-map-table-component {
+        position: absolute;
+        bottom: 0;
+        z-index: 1;
+    }
+
+    .esri-a11y-map-table-container {
+        max-height: 0;
+        min-height: 0;
+        width: 100%;
+        overflow-y: scroll;
+        bottom: 0;
+        -webkit-transition: max-height .5s ease-in-out;   
+        -moz-transition: max-height .5s ease-in-out;   
+        /* -ms-transition: max-height .5s ease-in-out;   
+        -o-transition: max-height .5s ease-in-out;    */
+        transition: max-height .5s ease-in-out; 
+    }
+
+    .esri-a11y-map-table-container table {
+        margin: 0;
+        opacity: 0;
+        -webkit-transition: opacity .5s ease-in-out;   
+        -moz-transition: opacity .5s ease-in-out;   
+        /* -ms-transition: opacity .5s ease-in-out;   
+        -o-transition: opacity .5s ease-in-out;    */
+        transition: opacity .5s ease-in-out; 
+    } 
+    
+    .esri-a11y-map-table-container th {
+        font-weight: 500;
+    }
+
+    .esri-a11y-map-table-component.open .esri-a11y-map-table-container {
+        max-height: 40vh;
+    }
+
+    .esri-a11y-map-table-component.open table {
+        opacity: 1;
+    }
+
+    .esri-a11y-map-table-row:hover ,
+    .esri-a11y-map-table-row:active ,
+    .esri-a11y-map-table-row:focus     {
+        background: #f0f0f0;
+    }
+    

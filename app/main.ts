@@ -14,6 +14,10 @@ import Search = require("esri/widgets/Search");
 import Home = require("esri/widgets/Home");
 import Locator = require("esri/tasks/Locator");
 
+import FeatureLayer = require("esri/layers/FeatureLayer");
+import Point = require("esri/geometry/Point");
+import Collection = require("esri/core/Collection");
+
 import esri = __esri;
 
 
@@ -26,6 +30,7 @@ let webmapId = "7eca81856e22478da183da6a33c24dfe";
 
 let queryResults: Graphic[];
 let pageResults: Graphic[];
+let featureResults: Graphic[];
 
 let currentPage: number;
 let numberOfPages: number;
@@ -38,6 +43,9 @@ const liveDetailsNode = document.getElementById("details");
 
 const numberPerPage: number = 7;
 
+/* some constants for toggling */
+const addTable: boolean = true;
+const visTableAttr: Array<[string, string]> = [["Name", 'NAME'], ['Address', 'Address'], ['Elevation (ft)', 'Elevation'], ['Horseback riding', 'HorseTrail'], ['ADA accessibility rating', 'ADAtrail'], ['Dogs allowed', 'TH_LEASH'], ['Biking Allowed', 'BikeTrail'], ['Picnic tables available', 'PICNIC']]; 
 
 const urlObject = urlUtils.urlToObject(document.location.href);
 if (urlObject && urlObject.query) {
@@ -224,9 +232,9 @@ function setupKeyHandlers() {
  */
 function popupKeyHandler():void {
     if(view.popup.visible){
-        (<HTMLElement>view.popup.container).addEventListener('keydown', popupKeyHandlerFunction);
+        (<HTMLElement>view.popup.container).addEventListener('keyup', popupKeyHandlerFunction);
     } else {
-        (<HTMLElement>view.popup.container).removeEventListener('keydown', popupKeyHandlerFunction);
+        (<HTMLElement>view.popup.container).removeEventListener('keyup', popupKeyHandlerFunction);
     }
 }
 /**
@@ -234,6 +242,8 @@ function popupKeyHandler():void {
  * @param keyEvt
  */
 function popupKeyHandlerFunction(keyEvt: any): void {
+    keyEvt.preventDefault();
+    keyEvt.stopPropagation();
     const key = keyEvt.key;
     if (key === "Escape") {
         view.popup.close();
@@ -393,11 +403,12 @@ function generateList(): void {
 
 /**
  * Display popup for selected feature 
- * @param key number key pressed to identify selected feature
+ * @param {number} key number key pressed to identify selected feature
+ * @param {Graphic[]} [resultsArray=pageResults] Optional: array of graphics to display as pop-up feature
  */
-function displayFeatureInfo(key: number): void {
+function displayFeatureInfo(key: number, resultsArray: Graphic[] = pageResults): void {
 
-    const selectedGraphic = pageResults[key - 1];
+    const selectedGraphic = resultsArray[key - 1];
 
     if (selectedGraphic) {
         let location: esri.Point;
@@ -406,6 +417,12 @@ function displayFeatureInfo(key: number): void {
         } else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
             location = selectedGraphic.geometry.extent.center;
         }
+        
+        //if location is not within the ui extent, move extent to include location
+        if( !view.extent.contains(location) ) {
+            view.goTo(location);
+        }
+
         liveDetailsNode.innerHTML = "Displaying content for selected feature. Press <strong>esc</strong> to close.";
         view.popup.open({
             location: location,
@@ -416,7 +433,15 @@ function displayFeatureInfo(key: number): void {
             popupKeyHandler();
         })
         watchUtils.whenFalseOnce(view.popup, "visible", () => {
-            addFocusToMap();
+            //if last focus is set return there, else go to map
+            let destination = document.getElementById("esri-a11y-last-focus");
+            if(destination){
+                document.getElementById("intro").innerHTML = "";
+                destination.focus();
+                destination.id = "";
+            } else {
+                addFocusToMap();
+            }
             popupKeyHandler();
         });
     }
@@ -470,5 +495,190 @@ function calculateLocation(address: any) {
     }
     console.log("display", displayValue);
     liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
+}
+
+/**
+ * Create table of pop-up data 
+ */
+if(addTable){
+    view.when(function(){ //function for when all feaeture layers are laoaded? 
+        const tableComponent = document.createElement("div");
+        tableComponent.className = "esri-a11y-map-table-component";
+        tableComponent.id = "esri-a11y-table-component";
+        //create toggle button
+        const tableToggle = document.getElementById("esri-a11y-table-toggle");
+        tableToggle.classList.remove("hidden");
+        view.ui.add({
+            component: tableToggle,
+            position: "top-left"
+        });
+        const tableContainer = document.createElement("div");
+        tableContainer.className = "esri-a11y-map-table-container";
+        const tableNode = createTable();
+        tableContainer.appendChild(tableNode);
+        tableComponent.appendChild(tableContainer);
+        view.ui.add(tableComponent);
+    });
+}
+
+/**
+ * Function to fill feature table
+ * Queries operational layers and uses features to populate table
+ */
+function createTable(): HTMLElement {
+    const tableNode = document.createElement("table");
+    //tableNode.className = "esri-a11y-map-popup-table"; 
+    let tableRow = document.createElement("tr");
+    let tableData: HTMLElement;
+    for (var labelArray of visTableAttr){
+        tableData = document.createElement("th");
+        tableData.innerText = labelArray[0];
+        tableRow.appendChild(tableData);
+    }
+    tableNode.appendChild(tableRow);
+    map.layers.forEach(function(layer){
+        //how should we seperate table for seperate layers? 
+        if(layer.type == "feature") { //are there any operational types that wouldnt be included ?
+            if(!featureResults) {
+                featureResults = [];
+            }
+            let featLayer = <FeatureLayer> layer;
+            let query = featLayer.createQuery();
+            query.returnGeometry = true;
+            featLayer.queryFeatures(query).then(function(results){
+                results.features.forEach((feature, index) => {
+                    featureResults.push(feature);
+                    tableRow = document.createElement("tr");
+                    for (var labelArray of visTableAttr) {
+                        tableData = document.createElement("td");
+                        if (labelArray[1] == 'Address'){
+                            let addLink = document.createElement("a");
+                            addLink.href = "#"; 
+                            addLink.className = "esri-table-point-reference";
+                            //addLink.dataset.id = "" + (index + 1); //to compensate for the displayFeatureInfo function subtracting 1 by default
+                            addLink.innerText = feature.attributes[labelArray[1]];
+                            addLink.tabIndex = -1;
+                            tableData.appendChild(addLink);
+                        } else {
+                            tableData.innerText = feature.attributes[labelArray[1]];   
+                        }
+                        tableRow.appendChild(tableData);
+                    }
+                    tableRow.dataset.id = "" + (index + 1); //to compensate for the displayFeatureInfo function subtracting 1 by default
+                    tableRow.tabIndex = -1;
+                    tableRow.className = "esri-a11y-map-table-row";
+                    tableNode.appendChild(tableRow);
+                });
+            }).then(addUIToTable);
+        }
+    });
+    return tableNode;
+}
+/**
+ * Adds a functional UI to table which lets users use links to bring up the locations pop-ups
+ */
+function addUIToTable(): void{
+    //click handler for addresses 
+    const tableClickHandler = function(e: Event) {
+        e.preventDefault;
+        e.stopPropagation;
+        (e.currentTarget as Element ).id = "esri-a11y-last-focus";
+        let id = this.getAttribute("data-id");
+        displayFeatureInfo(id, featureResults);
+    };
+    const tableFocusHandler = function(e: Event) {
+        const target = e.currentTarget as Element;
+        let featureName = target.firstElementChild.innerHTML;
+        // detail read of table items
+        liveDetailsNode.innerHTML = featureName;
+    }
+
+    //click handler for table toggler
+    const toggleBtn = document.getElementById("esri-a11y-table-toggle");
+    const toggleClickHandler = function(e: Event) {
+        e.preventDefault;
+        e.stopPropagation;
+        const tableContainer = document.getElementById("esri-a11y-table-component");
+        let containerClasses = tableContainer.classList;
+        let tableRows = tableContainer.getElementsByClassName("esri-a11y-map-table-row");
+        if(!containerClasses.contains("open")) {
+            tableContainer.classList.add("open");
+            for (var i = 0; i < tableRows.length; i++){
+                tableRows[i].setAttribute("tabIndex", "0");
+                tableRows[i].addEventListener('click', tableClickHandler, false);
+                tableRows[i].addEventListener('focus', tableFocusHandler, false);
+            }
+            //add keyboard handlers
+            tableContainer.addEventListener("keyup", tableKeyHandlers);
+
+            
+            //move focus to table
+            (tableRows[0] as HTMLElement).focus({preventScroll:true});
+            
+            // directions of how to use table and show live region
+            liveNode.classList.remove("hidden");
+            document.getElementById("intro").innerHTML = `Use the up and down arrow keys to navigate the table and find features. Use the enter key to toggle more information on the feature. 
+            To return to the map, press escape.`;
+            
+        } else {
+            tableContainer.classList.remove("open");
+            for (var i = 0; i < tableRows.length; i++){
+                tableRows[i].setAttribute("tabIndex", "-1");
+                tableRows[i].removeEventListener('click', tableClickHandler);
+                tableRows[i].removeEventListener('focus', tableFocusHandler);
+            }
+            //remove key handlers
+            tableContainer.removeEventListener("keyup", tableKeyHandlers);
+
+             // remove directions of how to use table and hide live region
+             document.getElementById("intro").innerHTML = "";
+             liveDetailsNode.innerHTML = "";
+             liveNode.classList.add("hidden");
+
+            //move focus back to toggle button
+            toggleBtn.focus();
+        }
+    };
+    //Hitting enter triggers click of button
+    var toggleEnterHandler = function(e: KeyboardEvent) : void {
+        let key = e.which || e.keyCode;
+        if(key == 13) {
+            let event = new Event("click");
+            e.target.dispatchEvent(event);
+        }
+        return;
+    };
+    toggleBtn.addEventListener('click', toggleClickHandler, false);
+    toggleBtn.addEventListener('keyup', toggleEnterHandler, false);
+}
+
+/**
+ * Key handlers from Table 
+ */
+function tableKeyHandlers (keyEvt: any) {
+    const key = keyEvt.key;
+    if (key === "Escape") {
+        // esc to exit to toggle button
+        var toggleBtn = document.getElementById("esri-a11y-table-toggle");
+        toggleBtn.dispatchEvent( (new Event("click")) );
+    } else if (key === "ArrowUp") {
+        // up arrow to go previous row
+        let prev = keyEvt.target.previousElementSibling;
+        if( !prev || !prev.hasAttribute("tabIndex") ){
+            prev = keyEvt.target.parentElement.lastElementChild;
+        }
+        prev.focus();
+        
+    } else if (key === "ArrowDown") {
+        // down arrow to go next row
+        let next = keyEvt.target.nextElementSibling;
+        if( !next || !next.hasAttribute("tabIndex") ){
+            next = keyEvt.target.parentElement.firstElementChild.nextElementSibling;
+        }
+        next.focus();
+    } else if (key === "Enter") {
+        // enter trigger click 
+        keyEvt.target.dispatchEvent( (new Event("click")) );
+    }
 }
 
