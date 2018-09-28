@@ -14,6 +14,10 @@ import Search = require("esri/widgets/Search");
 import Home = require("esri/widgets/Home");
 import Locator = require("esri/tasks/Locator");
 
+import FeatureLayer = require("esri/layers/FeatureLayer");
+import Point = require("esri/geometry/Point");
+import Collection = require("esri/core/Collection");
+
 import esri = __esri;
 
 
@@ -26,6 +30,7 @@ let webmapId = "7eca81856e22478da183da6a33c24dfe";
 
 let queryResults: Graphic[];
 let pageResults: Graphic[];
+let featureResults: Graphic[];
 
 let currentPage: number;
 let numberOfPages: number;
@@ -38,6 +43,9 @@ const liveDetailsNode = document.getElementById("details");
 
 const numberPerPage: number = 7;
 
+/* some constants for toggling */
+const addTable: boolean = true;
+const visTableAttr: Array<[string, string]> = [["Name", 'NAME'], ['Address', 'Address'], ['Elevation (ft)', 'Elevation'], ['Horseback riding', 'HorseTrail'], ['ADA accessibility rating', 'ADAtrail'], ['Dogs allowed', 'TH_LEASH'], ['Biking Allowed', 'BikeTrail'], ['Picnic tables available', 'PICNIC']]; 
 
 const urlObject = urlUtils.urlToObject(document.location.href);
 if (urlObject && urlObject.query) {
@@ -393,11 +401,12 @@ function generateList(): void {
 
 /**
  * Display popup for selected feature 
- * @param key number key pressed to identify selected feature
+ * @param {number} key number key pressed to identify selected feature
+ * @param {Graphic[]} [resultsArray=pageResults] Optional: array of graphics to display as pop-up feature
  */
-function displayFeatureInfo(key: number): void {
+function displayFeatureInfo(key: number, resultsArray: Graphic[] = pageResults): void {
 
-    const selectedGraphic = pageResults[key - 1];
+    const selectedGraphic = resultsArray[key - 1];
 
     if (selectedGraphic) {
         let location: esri.Point;
@@ -416,7 +425,15 @@ function displayFeatureInfo(key: number): void {
             popupKeyHandler();
         })
         watchUtils.whenFalseOnce(view.popup, "visible", () => {
-            addFocusToMap();
+            //if last focus is set return there, else go to map
+            let destination = document.getElementById("esri-a11y-last-focus");
+            if(destination){
+                document.getElementById("intro").innerHTML = "";
+                destination.focus();
+                destination.id = "";
+            } else {
+                addFocusToMap();
+            }
             popupKeyHandler();
         });
     }
@@ -471,4 +488,152 @@ function calculateLocation(address: any) {
     console.log("display", displayValue);
     liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
 }
+
+/**
+ * Create table of pop-up data 
+ */
+if(addTable){
+    view.when(function(){ //function for when all feaeture layers are laoaded? 
+        const tableComponent = document.createElement("div");
+        tableComponent.className = "esri-a11y-map-table-component";
+        tableComponent.id = "esri-a11y-table-component";
+        //create toggle button
+        const tableToggle = document.getElementById("esri-a11y-table-toggle");
+        tableToggle.classList.remove("hidden");
+        view.ui.add({
+            component: tableToggle,
+            position: "top-left"
+        });
+        const tableContainer = document.createElement("div");
+        tableContainer.className = "esri-a11y-map-table-container";
+        const tableNode = createTable();
+        tableContainer.appendChild(tableNode);
+        tableComponent.appendChild(tableContainer);
+        view.ui.add(tableComponent);
+    });
+}
+
+/**
+ * Function to fill feature table
+ * Queries operational layers and uses features to populate table
+ */
+function createTable(): HTMLElement {
+    const tableNode = document.createElement("table");
+    //tableNode.className = "esri-a11y-map-popup-table"; 
+    let tableRow = document.createElement("tr");
+    let tableData: HTMLElement;
+    for (var labelArray of visTableAttr){
+        tableData = document.createElement("th");
+        tableData.innerText = labelArray[0];
+        tableRow.appendChild(tableData);
+    }
+    tableNode.appendChild(tableRow);
+    map.layers.forEach(function(layer){
+        //how should we seperate table for seperate layers? 
+        if(layer.type == "feature") { //are there any operational types that wouldnt be included ?
+            if(!featureResults) {
+                featureResults = [];
+            }
+            let featLayer = <FeatureLayer> layer;
+            let query = featLayer.createQuery();
+            query.returnGeometry = true;
+            featLayer.queryFeatures(query).then(function(results){
+                results.features.forEach((feature, index) => {
+                    featureResults.push(feature);
+                    tableRow = document.createElement("tr");
+                    for (var labelArray of visTableAttr) {
+                        tableData = document.createElement("td");
+                        if (labelArray[1] == 'Address'){
+                            let addLink = document.createElement("a");
+                            addLink.href = "#"; 
+                            addLink.className = "esri-table-point-reference";
+                            //addLink.dataset.id = "" + (index + 1); //to compensate for the displayFeatureInfo function subtracting 1 by default
+                            addLink.innerText = feature.attributes[labelArray[1]];
+                            addLink.tabIndex = -1;
+                            tableData.appendChild(addLink);
+                        } else {
+                            tableData.innerText = feature.attributes[labelArray[1]];   
+                        }
+                        tableRow.appendChild(tableData);
+                    }
+                    tableRow.dataset.id = "" + (index + 1); //to compensate for the displayFeatureInfo function subtracting 1 by default
+                    tableRow.tabIndex = -1;
+                    tableRow.className = "esri-a11y-map-table-row";
+                    tableNode.appendChild(tableRow);
+                });
+            }).then(addUIToTable);
+        }
+    });
+    return tableNode;
+}
+/**
+ * Adds a functional UI to table which lets users use links to bring up the locations pop-ups
+ */
+function addUIToTable(): void{
+    //click handler for addresses [NEED TO REDO]
+    var els = document.getElementsByClassName("esri-table-point-reference");
+    var tableClickHandler = function(e: Event) {
+        e.preventDefault;
+        e.stopPropagation;
+        e.srcElement.id = "esri-a11y-last-focus";
+        let id = this.getAttribute("data-id");
+        displayFeatureInfo(id, featureResults);
+    };
+    for (var i=0; i<els.length; i++) {
+        els[i].addEventListener('click', tableClickHandler, false);
+    }
+
+    //click handler for table toggler
+    var toggleBtn = document.getElementById("esri-a11y-table-toggle");
+    var toggleClickHandler = function(e: Event) {
+        e.preventDefault;
+        e.stopPropagation;
+        const tableContainer = document.getElementById("esri-a11y-table-component");
+        let containerClasses = tableContainer.classList;
+        let tableRows = tableContainer.getElementsByClassName("esri-a11y-map-table-row");
+        if(!containerClasses.contains("open")) {
+            tableContainer.classList.add("open");
+            for (var i = 0; i < tableRows.length; i++){
+                tableRows[i].setAttribute("tabIndex", "0");
+            }
+            //add keyboard handlers
+            //const tableKeyHandler = view.on("key-down", tableKeyHandlers);
+
+            //reading in live-region? (Use on-focus for <TR>)
+            //move focus to table
+            (tableRows[0] as HTMLElement).focus({preventScroll:true});
+        } else {
+            tableContainer.classList.remove("open");
+            for (var i = 0; i < tableRows.length; i++){
+                tableRows[i].setAttribute("tabIndex", "-1");
+            }
+            //remove key handlers
+            // if (tableKeyHandlers) {
+            //     tableKeyHandlers.remove();
+            //     tableKeyHandlers = null;
+            // }
+        }
+    };
+    toggleBtn.addEventListener('click', toggleClickHandler, false);
+}
+
+/**
+ * Key handlers from Table 
+ */
+// function tableKeyHandlers (keyEvt: any) {
+//     //add key handlers
+//     const key = keyEvt.key;
+//     if (key === "Escape") {
+//         // esc to exit to toggle button
+//     } else if (key === "ArrowUp") {
+//         // up arrow to go previous row
+//     } else if (key === "ArrowDown") {
+//         // down arrow to go next row
+//     } else if (key === "Enter") {
+//         // enter trigger click 
+//         // set back focus for esc from pop-up
+//     }
+    
+    
+// }
 
