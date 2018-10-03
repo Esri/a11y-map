@@ -15,6 +15,7 @@ import Home = require("esri/widgets/Home");
 import Locator = require("esri/tasks/Locator");
 
 import esri = __esri;
+import { watch } from "fs";
 
 
 let watchHandler: esri.PausableWatchHandle;
@@ -38,6 +39,12 @@ const liveDetailsNode = document.getElementById("details");
 
 const numberPerPage: number = 7;
 
+//Add constant to limit navigation extent
+const limitNav : boolean = true;
+const xmax : number = -11675223.511033827;
+const xmin : number = -11766718.63389106;
+const ymax : number = 4905061.491547991;
+const ymin : number = 4837491.158543985;
 
 const urlObject = urlUtils.urlToObject(document.location.href);
 if (urlObject && urlObject.query) {
@@ -55,6 +62,7 @@ const view = new MapView({
     map: map,
     container: "viewDiv"
 });
+
 // Add the live node to the view 
 view.ui.add(liveNode, "manual");
 // When user tabs into the app for the first time 
@@ -472,3 +480,25 @@ function calculateLocation(address: any) {
     liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
 }
 
+/*
+* If user chooses to limit the navigation area, then this creates a listener 
+* for movement on view that tests if the new center is within the extent window
+*/
+if(limitNav){
+    view.when(function(){
+        //create navigation extent using map's native spacial reference
+        const navigationExtent = new Extent({
+            xmax: xmax,
+            xmin: xmin,
+            ymax: ymax,
+            ymin: ymin,
+            spatialReference: view.extent.spatialReference,
+        });
+        view.watch('center', function(newValue, oldValue, propertyName) {
+            //if center goes outside extent, then move it back to the original position
+            if( !navigationExtent.contains(newValue) ) {
+                view.set(propertyName, oldValue); 
+            }
+        });
+    });
+}
