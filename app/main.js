@@ -15,13 +15,8 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var liveDirNode = document.getElementById("dir");
     var liveDetailsNode = document.getElementById("details");
     var numberPerPage = 7;
-    //Add constant to limit navigation extent
+    //Configurable setting to toggle using map extent
     var limitNav = true;
-    var xmax = -11675223.511033827;
-    var xmin = -11766718.63389106;
-    var ymax = 4905061.491547991;
-    var ymin = 4837491.158543985;
-    // declare var navigationExtent : Extent;
     var urlObject = urlUtils.urlToObject(document.location.href);
     if (urlObject && urlObject.query) {
         if (urlObject.query.webmap) {
@@ -42,7 +37,6 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     // When user tabs into the app for the first time 
     // add button to navigate map via keyboard to the ui and focus it 
     document.addEventListener("keydown", function handler(e) {
-        console.log(view.extent);
         if (e.keyCode === 9) {
             e.currentTarget.removeEventListener(e.type, handler);
             var keyboardBtn_1 = document.getElementById("keyboard");
@@ -428,14 +422,8 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     */
     if (limitNav) {
         view.when(function () {
-            //create navigation extent using map's native spacial reference
-            var navigationExtent = new Extent({
-                xmax: xmax,
-                xmin: xmin,
-                ymax: ymax,
-                ymin: ymin,
-                spatialReference: view.extent.spatialReference,
-            });
+            //create navigation extent using map's native extent settings
+            var navigationExtent = map.portalItem.extent;
             view.watch('center', function (newValue, oldValue, propertyName) {
                 //if center goes outside extent, then move it back to the original position
                 if (!navigationExtent.contains(newValue)) {

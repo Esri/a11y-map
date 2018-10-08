@@ -39,12 +39,8 @@ const liveDetailsNode = document.getElementById("details");
 
 const numberPerPage: number = 7;
 
-//Add constant to limit navigation extent
+//Configurable setting to toggle using map extent
 const limitNav : boolean = true;
-const xmax : number = -11675223.511033827;
-const xmin : number = -11766718.63389106;
-const ymax : number = 4905061.491547991;
-const ymin : number = 4837491.158543985;
 
 const urlObject = urlUtils.urlToObject(document.location.href);
 if (urlObject && urlObject.query) {
@@ -486,14 +482,8 @@ function calculateLocation(address: any) {
 */
 if(limitNav){
     view.when(function(){
-        //create navigation extent using map's native spacial reference
-        const navigationExtent = new Extent({
-            xmax: xmax,
-            xmin: xmin,
-            ymax: ymax,
-            ymin: ymin,
-            spatialReference: view.extent.spatialReference,
-        });
+        //create navigation extent using map's native extent settings
+        const navigationExtent = map.portalItem.extent;
         view.watch('center', function(newValue, oldValue, propertyName) {
             //if center goes outside extent, then move it back to the original position
             if( !navigationExtent.contains(newValue) ) {
