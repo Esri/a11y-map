@@ -530,7 +530,7 @@ function createTable(): HTMLElement {
     //tableNode.className = "esri-a11y-map-popup-table"; 
     let tableRow = document.createElement("tr");
     let tableData: HTMLElement;
-    for (var labelArray of visTableAttr){
+    for (let labelArray of visTableAttr){
         tableData = document.createElement("th");
         tableData.innerText = labelArray[0];
         tableRow.appendChild(tableData);
@@ -549,7 +549,7 @@ function createTable(): HTMLElement {
                 results.features.forEach((feature, index) => {
                     featureResults.push(feature);
                     tableRow = document.createElement("tr");
-                    for (var labelArray of visTableAttr) {
+                    for (let labelArray of visTableAttr) {
                         tableData = document.createElement("td");
                         if (labelArray[1] == 'Address'){
                             let addLink = document.createElement("a");
@@ -603,7 +603,7 @@ function addUIToTable(): void{
         let tableRows = tableContainer.getElementsByClassName("esri-a11y-map-table-row");
         if(!containerClasses.contains("open")) {
             tableContainer.classList.add("open");
-            for (var i = 0; i < tableRows.length; i++){
+            for (let i = 0; i < tableRows.length; i++){
                 tableRows[i].setAttribute("tabIndex", "0");
                 tableRows[i].addEventListener('click', tableClickHandler, false);
                 tableRows[i].addEventListener('focus', tableFocusHandler, false);
@@ -622,7 +622,7 @@ function addUIToTable(): void{
             
         } else {
             tableContainer.classList.remove("open");
-            for (var i = 0; i < tableRows.length; i++){
+            for (let i = 0; i < tableRows.length; i++){
                 tableRows[i].setAttribute("tabIndex", "-1");
                 tableRows[i].removeEventListener('click', tableClickHandler);
                 tableRows[i].removeEventListener('focus', tableFocusHandler);
@@ -640,7 +640,7 @@ function addUIToTable(): void{
         }
     };
     //Hitting enter triggers click of button
-    var toggleEnterHandler = function(e: KeyboardEvent) : void {
+    const toggleEnterHandler = function(e: KeyboardEvent) : void {
         let key = e.which || e.keyCode;
         if(key == 13) {
             let event = new Event("click");
@@ -659,7 +659,7 @@ function tableKeyHandlers (keyEvt: any) {
     const key = keyEvt.key;
     if (key === "Escape") {
         // esc to exit to toggle button
-        var toggleBtn = document.getElementById("esri-a11y-table-toggle");
+        const toggleBtn = document.getElementById("esri-a11y-table-toggle");
         toggleBtn.dispatchEvent( (new Event("click")) );
     } else if (key === "ArrowUp") {
         // up arrow to go previous row
