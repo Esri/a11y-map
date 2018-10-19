@@ -7,7 +7,7 @@ A prototype app to test adding keyboard interaction (similar to Google's a11y be
 ![App](a11y-map.png)
 
 ## Features
-To see the a11y features tab into the map. Once you do so you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard. 
+To see the a11y features tab into the map and you'll see that a megaphone icon is visible. Once you activate this icon you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard. 
 * Use the arrow keys to move around the map
 * Use the +/- keys to zoom in and out of the map
 * To learn more about one of the features wihin the selection box press the associated number key. 
