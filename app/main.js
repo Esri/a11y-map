@@ -8,6 +8,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var webmapId = "7eca81856e22478da183da6a33c24dfe";
     var queryResults;
     var pageResults;
+    var featureResults;
     var currentPage;
     var numberOfPages;
     var initialExtent = null;
@@ -15,6 +16,9 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     var liveDirNode = document.getElementById("dir");
     var liveDetailsNode = document.getElementById("details");
     var numberPerPage = 7;
+    /* some constants for toggling */
+    var addTable = true;
+    var visTableAttr = [["Name", 'NAME'], ['Address', 'Address'], ['Elevation (ft)', 'Elevation'], ['Horseback riding', 'HorseTrail'], ['ADA accessibility rating', 'ADAtrail'], ['Dogs allowed', 'TH_LEASH'], ['Biking Allowed', 'BikeTrail'], ['Picnic tables available', 'PICNIC']];
     var urlObject = urlUtils.urlToObject(document.location.href);
     if (urlObject && urlObject.query) {
         if (urlObject.query.webmap) {
@@ -191,10 +195,10 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
      */
     function popupKeyHandler() {
         if (view.popup.visible) {
-            view.popup.container.addEventListener('keydown', popupKeyHandlerFunction);
+            view.popup.container.addEventListener('keyup', popupKeyHandlerFunction);
         }
         else {
-            view.popup.container.removeEventListener('keydown', popupKeyHandlerFunction);
+            view.popup.container.removeEventListener('keyup', popupKeyHandlerFunction);
         }
     }
     /**
@@ -202,6 +206,8 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
      * @param keyEvt
      */
     function popupKeyHandlerFunction(keyEvt) {
+        keyEvt.preventDefault();
+        keyEvt.stopPropagation();
         var key = keyEvt.key;
         if (key === "Escape") {
             view.popup.close();
@@ -343,10 +349,12 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     }
     /**
      * Display popup for selected feature
-     * @param key number key pressed to identify selected feature
+     * @param {number} key number key pressed to identify selected feature
+     * @param {Graphic[]} [resultsArray=pageResults] Optional: array of graphics to display as pop-up feature
      */
-    function displayFeatureInfo(key) {
-        var selectedGraphic = pageResults[key - 1];
+    function displayFeatureInfo(key, resultsArray) {
+        if (resultsArray === void 0) { resultsArray = pageResults; }
+        var selectedGraphic = resultsArray[key - 1];
         if (selectedGraphic) {
             var location_1;
             if (selectedGraphic.geometry.type === "point") {
@@ -354,6 +362,10 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
             }
             else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
                 location_1 = selectedGraphic.geometry.extent.center;
+            }
+            //if location is not within the ui extent, move extent to include location
+            if (!view.extent.contains(location_1)) {
+                view.goTo(location_1);
             }
             liveDetailsNode.innerHTML = "Displaying content for selected feature. Press <strong>esc</strong> to close.";
             view.popup.open({
@@ -365,7 +377,16 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                 popupKeyHandler();
             });
             watchUtils.whenFalseOnce(view.popup, "visible", function () {
-                addFocusToMap();
+                //if last focus is set return there, else go to map
+                var destination = document.getElementById("esri-a11y-last-focus");
+                if (destination) {
+                    document.getElementById("intro").innerHTML = "";
+                    destination.focus();
+                    destination.id = "";
+                }
+                else {
+                    addFocusToMap();
+                }
                 popupKeyHandler();
             });
         }
@@ -413,6 +434,186 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         }
         console.log("display", displayValue);
         liveDirNode.innerHTML = "Currently searching near " + displayValue;
+    }
+    /**
+     * Create table of pop-up data
+     */
+    if (addTable) {
+        view.when(function () {
+            var tableComponent = document.createElement("div");
+            tableComponent.className = "esri-a11y-map-table-component";
+            tableComponent.id = "esri-a11y-table-component";
+            //create toggle button
+            var tableToggle = document.getElementById("esri-a11y-table-toggle");
+            tableToggle.classList.remove("hidden");
+            view.ui.add({
+                component: tableToggle,
+                position: "top-left"
+            });
+            var tableContainer = document.createElement("div");
+            tableContainer.className = "esri-a11y-map-table-container";
+            var tableNode = createTable();
+            tableContainer.appendChild(tableNode);
+            tableComponent.appendChild(tableContainer);
+            view.ui.add(tableComponent);
+        });
+    }
+    /**
+     * Function to fill feature table
+     * Queries operational layers and uses features to populate table
+     */
+    function createTable() {
+        var tableNode = document.createElement("table");
+        //tableNode.className = "esri-a11y-map-popup-table"; 
+        var tableRow = document.createElement("tr");
+        var tableData;
+        for (var _i = 0, visTableAttr_1 = visTableAttr; _i < visTableAttr_1.length; _i++) {
+            var labelArray = visTableAttr_1[_i];
+            tableData = document.createElement("th");
+            tableData.innerText = labelArray[0];
+            tableRow.appendChild(tableData);
+        }
+        tableNode.appendChild(tableRow);
+        map.layers.forEach(function (layer) {
+            //how should we seperate table for seperate layers? 
+            if (layer.type == "feature") { //are there any operational types that wouldnt be included ?
+                if (!featureResults) {
+                    featureResults = [];
+                }
+                var featLayer = layer;
+                var query = featLayer.createQuery();
+                query.returnGeometry = true;
+                featLayer.queryFeatures(query).then(function (results) {
+                    results.features.forEach(function (feature, index) {
+                        featureResults.push(feature);
+                        tableRow = document.createElement("tr");
+                        for (var _i = 0, visTableAttr_2 = visTableAttr; _i < visTableAttr_2.length; _i++) {
+                            var labelArray = visTableAttr_2[_i];
+                            tableData = document.createElement("td");
+                            if (labelArray[1] == 'Address') {
+                                var addLink = document.createElement("a");
+                                addLink.href = "#";
+                                addLink.className = "esri-table-point-reference";
+                                //addLink.dataset.id = "" + (index + 1); //to compensate for the displayFeatureInfo function subtracting 1 by default
+                                addLink.innerText = feature.attributes[labelArray[1]];
+                                addLink.tabIndex = -1;
+                                tableData.appendChild(addLink);
+                            }
+                            else {
+                                tableData.innerText = feature.attributes[labelArray[1]];
+                            }
+                            tableRow.appendChild(tableData);
+                        }
+                        tableRow.dataset.id = "" + (index + 1); //to compensate for the displayFeatureInfo function subtracting 1 by default
+                        tableRow.tabIndex = -1;
+                        tableRow.className = "esri-a11y-map-table-row";
+                        tableNode.appendChild(tableRow);
+                    });
+                }).then(addUIToTable);
+            }
+        });
+        return tableNode;
+    }
+    /**
+     * Adds a functional UI to table which lets users use links to bring up the locations pop-ups
+     */
+    function addUIToTable() {
+        //click handler for addresses 
+        var tableClickHandler = function (e) {
+            e.preventDefault;
+            e.stopPropagation;
+            e.currentTarget.id = "esri-a11y-last-focus";
+            var id = this.getAttribute("data-id");
+            displayFeatureInfo(id, featureResults);
+        };
+        var tableFocusHandler = function (e) {
+            var target = e.currentTarget;
+            var featureName = target.firstElementChild.innerHTML;
+            // detail read of table items
+            liveDetailsNode.innerHTML = featureName;
+        };
+        //click handler for table toggler
+        var toggleBtn = document.getElementById("esri-a11y-table-toggle");
+        var toggleClickHandler = function (e) {
+            e.preventDefault;
+            e.stopPropagation;
+            var tableContainer = document.getElementById("esri-a11y-table-component");
+            var containerClasses = tableContainer.classList;
+            var tableRows = tableContainer.getElementsByClassName("esri-a11y-map-table-row");
+            if (!containerClasses.contains("open")) {
+                tableContainer.classList.add("open");
+                for (var i = 0; i < tableRows.length; i++) {
+                    tableRows[i].setAttribute("tabIndex", "0");
+                    tableRows[i].addEventListener('click', tableClickHandler, false);
+                    tableRows[i].addEventListener('focus', tableFocusHandler, false);
+                }
+                //add keyboard handlers
+                tableContainer.addEventListener("keyup", tableKeyHandlers);
+                //move focus to table
+                tableRows[0].focus({ preventScroll: true });
+                // directions of how to use table and show live region
+                liveNode.classList.remove("hidden");
+                document.getElementById("intro").innerHTML = "Use the up and down arrow keys to navigate the table and find features. Use the enter key to toggle more information on the feature. \n            To return to the map, press escape.";
+            }
+            else {
+                tableContainer.classList.remove("open");
+                for (var i = 0; i < tableRows.length; i++) {
+                    tableRows[i].setAttribute("tabIndex", "-1");
+                    tableRows[i].removeEventListener('click', tableClickHandler);
+                    tableRows[i].removeEventListener('focus', tableFocusHandler);
+                }
+                //remove key handlers
+                tableContainer.removeEventListener("keyup", tableKeyHandlers);
+                // remove directions of how to use table and hide live region
+                document.getElementById("intro").innerHTML = "";
+                liveDetailsNode.innerHTML = "";
+                liveNode.classList.add("hidden");
+                //move focus back to toggle button
+                toggleBtn.focus();
+            }
+        };
+        //Hitting enter triggers click of button
+        var toggleEnterHandler = function (e) {
+            var key = e.which || e.keyCode;
+            if (key == 13) {
+                var event_1 = new Event("click");
+                e.target.dispatchEvent(event_1);
+            }
+            return;
+        };
+        toggleBtn.addEventListener('click', toggleClickHandler, false);
+        toggleBtn.addEventListener('keyup', toggleEnterHandler, false);
+    }
+    /**
+     * Key handlers from Table
+     */
+    function tableKeyHandlers(keyEvt) {
+        var key = keyEvt.key;
+        if (key === "Escape") {
+            // esc to exit to toggle button
+            var toggleBtn = document.getElementById("esri-a11y-table-toggle");
+            toggleBtn.dispatchEvent((new Event("click")));
+        }
+        else if (key === "ArrowUp") {
+            // up arrow to go previous row
+            var prev = keyEvt.target.previousElementSibling;
+            if (!prev || !prev.hasAttribute("tabIndex")) {
+                prev = keyEvt.target.parentElement.lastElementChild;
+            }
+            prev.focus();
+        }
+        else if (key === "ArrowDown") {
+            // down arrow to go next row
+            var next = keyEvt.target.nextElementSibling;
+            if (!next || !next.hasAttribute("tabIndex")) {
+                next = keyEvt.target.parentElement.firstElementChild.nextElementSibling;
+            }
+            next.focus();
+        }
+        else if (key === "Enter") {
+            // enter trigger click 
+            keyEvt.target.dispatchEvent((new Event("click")));
+        }
     }
 });
 //# sourceMappingURL=main.js.map
