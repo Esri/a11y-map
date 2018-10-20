@@ -1,4 +1,4 @@
-define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home", "esri/tasks/Locator"], function (require, exports, WebMap, urlUtils, MapView, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home, Locator) {
+define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/MapView", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home", "esri/tasks/Locator", "esri/widgets/Legend"], function (require, exports, WebMap, urlUtils, MapView, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home, Locator, Legend) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var watchHandler;
@@ -30,9 +30,9 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         map: map,
         container: "viewDiv"
     });
-    // Add the live node to the view 
+    // Add the live node to the view
     view.ui.add(liveNode, "manual");
-    // When user tabs into the app for the first time 
+    // When user tabs into the app for the first time
     // add button to navigate map via keyboard to the ui and focus it 
     document.addEventListener("keydown", function handler(e) {
         if (e.keyCode === 9) {
@@ -103,13 +103,27 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                     }
                 });
             }
-            // add layer as locator to search widget 
+            // add layer as locator to search widget
             searchWidget.sources.push({
                 featureLayer: l,
                 placeholder: "Search " + l.title + " layer",
                 withinViewEnabled: true
             });
         });
+        // Add a legend when the map view loads
+          var featureLayer = map.layers.getItemAt(0); // Grab the first layer from the webmap
+          var legend = new Legend({
+            container: "legendDiv",
+            view: view,
+            layerInfos: [{
+              layer: featureLayer,
+              title: "Trailheads"
+            }]
+          });
+          view.ui.add({
+              component: legend,
+              position: "top-right"
+          });
     });
     function setupKeyHandlers() {
         if (!watchHandler) {
@@ -180,7 +194,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
                     liveDirNode.innerHTML = "Moving " + dir + ".";
                 }
                 else if (key === "h") {
-                    /// Go to the view's initial extent 
+                    /// Go to the view's initial extent
                     view.goTo(initialExtent);
                 }
             });
@@ -335,7 +349,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
         var begin = ((currentPage - 1) * numberPerPage);
         var end = begin + numberPerPage;
         pageResults = queryResults.slice(begin, end);
-        // Get page status  
+        // Get page status
         var prevDisabled = currentPage === 1; // don't show 8
         var nextDisabled = currentPage === numberOfPages; // don't show 9
         liveNode.setAttribute("aria-busy", "true");
@@ -373,7 +387,7 @@ define(["require", "exports", "esri/WebMap", "esri/core/urlUtils", "esri/views/M
     function addFocusToMap() {
         document.getElementById("intro").innerHTML = "Use the arrow keys to navigate the map and find features. Use the plus (+) key to zoom in to the map and the minus (-) key to zoom out.\n        For details on your current area press the i key. Press the h key to return to the  starting map location.";
         window.addEventListener("mousedown", function (keyEvt) {
-            // Don't show the feature list unless tab is pressed. 
+            // Don't show the feature list unless tab is pressed.
             // prevent default for text box so search works
             if (keyEvt.key !== "Tab") {
                 if (keyEvt.target.type !== "text") {
