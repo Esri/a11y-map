@@ -1,15 +1,4 @@
 {
-    // "compilerOptions": {
-    //     "module": "amd",
-    //     "noImplicitAny": true,
-    //     "sourceMap": true,
-    //     "jsx": "react",
-    //     "reactNamespace": "jsxFactory",
-    //     "target": "es5",
-    //     "experimentalDecorators": true,
-    //     "preserveConstEnums": true,
-    //     "suppressImplicitAnyIndexErrors": true
-    // },
     "compilerOptions": {
         "sourceMap": true,
         "declaration": false,

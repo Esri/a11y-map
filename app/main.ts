@@ -43,11 +43,6 @@ import {
   setPageTitle
 } from "ApplicationBase/support/domHelper";
 
-// import {
-//   ApplicationConfig,
-//   ApplicationBaseSettings
-// } from "ApplicationBase/interfaces";
-
 import WebMap = require("esri/WebMap");
 
 import MapView = require("esri/views/MapView");
