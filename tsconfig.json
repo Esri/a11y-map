@@ -1,20 +1,43 @@
 {
+    // "compilerOptions": {
+    //     "module": "amd",
+    //     "noImplicitAny": true,
+    //     "sourceMap": true,
+    //     "jsx": "react",
+    //     "reactNamespace": "jsxFactory",
+    //     "target": "es5",
+    //     "experimentalDecorators": true,
+    //     "preserveConstEnums": true,
+    //     "suppressImplicitAnyIndexErrors": true
+    // },
     "compilerOptions": {
-        "module": "amd",
-        "noImplicitAny": true,
         "sourceMap": true,
-        "jsx": "react",
-        "reactNamespace": "jsxFactory",
+        "declaration": false,
+        "noImplicitAny": false,
+        "module": "amd",
         "target": "es5",
+        "moduleResolution": "node",
         "experimentalDecorators": true,
-        "preserveConstEnums": true,
-        "suppressImplicitAnyIndexErrors": true
+        "jsx": "react",
+        "jsxFactory": "tsx"
     },
+    "include": [
+        "./**/*"
+    ],
     "files": [
         "./app/main.ts",
-        "./typings.d.ts"
+        "./typings.d.ts",
+        "./node_modules/@types/arcgis-js-api/index.d.ts",
+        "./node_modules/@esri/application-base-js/index.d.ts",
+        "./node_modules/dojo-typings/dojo/1.11/loader.d.ts",
+        "./node_modules/dojo-typings/dojo/1.11/index.d.ts",
+        "./node_modules/dojo-typings/dojo/1.11/modules.d.ts",
+        "./node_modules/dojo-typings/dijit/1.11/index.d.ts",
+        "./node_modules/dojo-typings/dijit/1.11/modules.d.ts",
+        "./node_modules/dojo-typings/dojox/1.11/index.d.ts",
+        "./node_modules/dojo-typings/dojox/1.11/modules.d.ts"
     ],
     "exclude": [
-        "node_modules"
+        "./node_modules"
     ]
 }

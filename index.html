@@ -3,49 +3,36 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>A11y Map</title>
-    <link rel="stylesheet" href="https://s3-us-west-1.amazonaws.com/patterns.esri.com/files/calcite-web/1.0.0-rc.8/css/calcite-web.min.css">
-
-    <link rel="stylesheet" href="https://js.arcgis.com/4.8/esri/css/main.css">
-    <link rel="stylesheet" href="css/main.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel=icon href=assets/favicon.ico sizes="32x32" type="image/vnd.microsoft.icon">
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.9/esri/css/main.css">
+    <script src="./app/dojo.js"></script>
+    <script src="https://js.arcgis.com/4.9/"></script>
     <script>
-        var locationPath = location.pathname.replace(/\/[^\/]+$/, "");
-        window.dojoConfig = {
-            has: {
-                "esri-featurelayer-webgl": 1
-            },
-            packages: [{
-                name: "app",
-                location: locationPath + "/app"
-            }]
-        }
+        require(["Application/init"]);
     </script>
-    <script src="https://js.arcgis.com/4.8"></script>
 </head>
 
-<body>
-    <div id="viewDiv" role="application">
-    </div>
+<body class="configurable-application--loading">
+    <div id="viewContainer" class="configurable-application__view-container"></div>
     <div aria-describedby="intro" id="liveViewInfo" class="hidden live-info" role="navigation">
-        <div aria-live="polite" role="status">
-            <p id="intro"></p>
-        </div>
-        <div id="liveArea" aria-atomic="true" aria-live="polite">
-            <div class="directions-info">
-                <span id="dir"></span>
-            </div>
-            <div id="details" class="detail-info"></div>
-        </div>
+      <div aria-live="polite" role="status">
+          <p id="intro"></p>
+      </div>
+      <div id="liveArea" aria-atomic="true" aria-live="polite">
+          <div class="directions-info">
+              <span id="dir"></span>
+          </div>
+          <div id="details" class="detail-info"></div>
+      </div>
     </div>
     <button role="main" id="keyboard" class="hidden esri-widget esri-component esri-widget-button keyboard-btn esri-icon-announcement"
         aria-label="Enable keyboard navigation">
     </button>
-
-    <script>
-        require(["app/main"]);
-    </script>
 </body>
 
 </html>

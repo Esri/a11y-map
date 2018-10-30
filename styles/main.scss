@@ -1,0 +1,160 @@
+/*
+  Copyright 2017 Esri
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+
+  you may not use this file except in compliance with the License.
+
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+
+  distributed under the License is distributed on an "AS IS" BASIS,
+
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+  See the License for the specific language governing permissions and
+
+  limitations under the License.​
+*/
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.configurable-application__view-container {
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  .esri-view {
+    width: 100%;
+    height: 100%;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-color: #fff;
+    background-image: url(../assets/loader-ie9.gif);
+  }
+}
+
+.configurable-application--loading {
+  text-align: center;
+  display: block;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #fff;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-image: url(../assets/loader-ie9.gif);
+  .configurable-application__view-container {
+    display: none;
+  }
+}
+
+.offscreen {
+  clip-path: inset(100%);
+  clip: rect(1px 1px 1px 1px);
+  /* IE 6/7 */
+  clip: rect(1px, 1px, 1px, 1px);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  /* added line */
+  width: 1px;
+}
+
+esri-popup:focus {
+  border: 2px solid rgb(94, 158, 214);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.live-info {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  height: auto;
+  margin: 0 auto;
+  background: white;
+  z-index: 1;
+  font-size: 15px;
+  padding: 1em;
+}
+
+.feature-index {
+  background-color: #333;
+  color: #fff;
+  padding: 2px 4px;
+  margin-right: 4px;
+  font-weight: bold;
+  min-width: 12px;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.feature-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 3px;
+}
+
+.detail-info {
+  padding: 13px 11px;
+  line-height: 1.5em;
+  margin-bottom: 1em;
+}
+
+.directions-info {
+  position: absolute;
+  bottom: 0;
+  right: 3px;
+  color: #4d4d4d;
+}
+
+.esri-expand__content .esri-widget {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.driving-details {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.panel {
+  max-height: 40%;
+  min-height: 20%;
+  overflow: auto;
+}
+
+#directionsList {
+  overflow: auto;
+}
+
+.esri-search__source {
+  margin: 0;
+}
+
+.esri-directions li {
+  margin: 0;
+}
+
+.esri-search__suggestions-list li {
+  margin: 0;
+}
