@@ -58,6 +58,8 @@ import Search = require("esri/widgets/Search");
 import Home = require("esri/widgets/Home");
 import Locator = require("esri/tasks/Locator");
 
+import Legend = require("esri/widgets/Legend");
+
 import esri = __esri;
 
 class A11yMap {
@@ -254,7 +256,23 @@ class A11yMap {
             } as esri.FeatureLayerSearchSource);
     
         });
-    
+        
+        // Add a legend when the map view loads
+        const featureLayer = this.view.map.layers.getItemAt(0); // Grab the first layer from the webmap
+        console.log(featureLayer);
+        const legend = new Legend({
+            container: "legendDiv",
+            view: this.view,
+            // layerInfos: [{ //should be dynamic...
+            //     layer: featureLayer,
+            //     title: "Trailheads" 
+            // }]
+        });
+        this.view.ui.add({
+            component: legend,
+            position: "top-right" //how do i make this configurable
+        });
+
     });
   }
 

@@ -30,7 +30,7 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationBase/support/domHelper", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home", "esri/tasks/Locator"], function (require, exports, itemUtils_1, domHelper_1, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home, Locator) {
+define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationBase/support/domHelper", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home", "esri/tasks/Locator", "esri/widgets/Legend"], function (require, exports, itemUtils_1, domHelper_1, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home, Locator, Legend) {
     "use strict";
     var CSS = {
         loading: "configurable-application--loading"
@@ -188,6 +188,17 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
                         placeholder: "Search " + l.title + " layer",
                         withinViewEnabled: true
                     });
+                });
+                // Add a legend when the map view loads
+                var featureLayer = _this.view.map.layers.getItemAt(0); // Grab the first layer from the webmap
+                console.log(featureLayer);
+                var legend = new Legend({
+                    container: "legendDiv",
+                    view: _this.view,
+                });
+                _this.view.ui.add({
+                    component: legend,
+                    position: "top-right" //how do i make this configurable
                 });
             });
         };
