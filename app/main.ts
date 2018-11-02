@@ -1,5 +1,49 @@
+/*
+  Copyright 2017 Esri
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+
+  you may not use this file except in compliance with the License.
+
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+
+  distributed under the License is distributed on an "AS IS" BASIS,
+
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
+  See the License for the specific language governing permissions and
+
+  limitations under the License.​
+*/
+
+import ApplicationBase = require("ApplicationBase/ApplicationBase");
+
+import i18n = require("dojo/i18n!./nls/resources");
+
+const CSS = {
+  loading: "configurable-application--loading"
+};
+
+import {
+  createMapFromItem,
+  createView,
+  getConfigViewProperties,
+  getItemTitle,
+  findQuery,
+  goToMarker
+} from "ApplicationBase/support/itemUtils";
+
+import {
+  setPageLocale,
+  setPageDirection,
+  setPageTitle
+} from "ApplicationBase/support/domHelper";
+
 import WebMap = require("esri/WebMap");
-import urlUtils = require("esri/core/urlUtils");
 
 import MapView = require("esri/views/MapView");
 
@@ -15,170 +59,238 @@ import Home = require("esri/widgets/Home");
 import Locator = require("esri/tasks/Locator");
 
 import esri = __esri;
-import { watch } from "fs";
 
+class A11yMap {
+  //--------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //--------------------------------------------------------------------------
 
-let watchHandler: esri.PausableWatchHandle;
-let keyDownHandler: IHandle;
-let keyUpHandler: IHandle;
+  watchHandler: esri.PausableWatchHandle;
+  keyDownHandler: IHandle;
+  keyUpHandler: IHandle;
+  extentHandler: esri.WatchHandle;
 
-const queryLayers: any[] = [];
-let webmapId = "7eca81856e22478da183da6a33c24dfe";
+  queryLayers: any[] = [];
 
-let queryResults: Graphic[];
-let pageResults: Graphic[];
+  queryResults: Graphic[];
+  pageResults: Graphic[];
 
-let currentPage: number;
-let numberOfPages: number;
-let initialExtent: esri.Extent = null;
+  currentPage: number;
+  numberOfPages: number;
+  initialExtent: esri.Extent = null;
 
+  liveNode = document.getElementById("liveViewInfo");
+  liveDirNode = document.getElementById("dir");
+  liveDetailsNode = document.getElementById("details");
 
-const liveNode = document.getElementById("liveViewInfo");
-const liveDirNode = document.getElementById("dir");
-const liveDetailsNode = document.getElementById("details");
+  numberPerPage: number = 7;
 
-const numberPerPage: number = 7;
+  map: WebMap;
+  view: MapView | esri.SceneView;
 
-//Configurable setting to toggle using map extent
-const limitNav : boolean = true;
+  //----------------------------------
+  //  ApplicationBase
+  //----------------------------------
+  base: ApplicationBase = null;
 
-const urlObject = urlUtils.urlToObject(document.location.href);
-if (urlObject && urlObject.query) {
-    if (urlObject.query.webmap) {
-        webmapId = urlObject.query.webmap;
+  //--------------------------------------------------------------------------
+  //
+  //  Public Methods
+  //
+  //--------------------------------------------------------------------------
+
+  public init(base: ApplicationBase): void {
+    if (!base) {
+      console.error("ApplicationBase is not defined");
+      return;
     }
-}
-const map = new WebMap({
-    portalItem: {
-        id: webmapId
+    setPageLocale(base.locale);
+    setPageDirection(base.direction);
+
+    this.base = base;
+
+    const { config, results, settings } = base;
+    const { find, marker } = config;
+    const { webMapItems } = results;
+
+    const validWebMapItems = webMapItems.map(response => {
+      return response.value;
+    });
+
+    const firstItem = validWebMapItems[0];
+
+    if (!firstItem) {
+      console.error("Could not load an item to display");
+      return;
     }
-});
 
-const view = new MapView({
-    map: map,
-    container: "viewDiv"
-});
+    config.title = !config.title ? getItemTitle(firstItem) : "";
+    setPageTitle(config.title);
 
-// Add the live node to the view 
-view.ui.add(liveNode, "manual");
-// When user tabs into the app for the first time 
-// add button to navigate map via keyboard to the ui and focus it 
-document.addEventListener("keydown", function handler(e) {
-    if (e.keyCode === 9) {
-        e.currentTarget.removeEventListener(e.type, handler);
-        const keyboardBtn = document.getElementById("keyboard");
-        keyboardBtn.classList.remove("hidden");
+    const portalItem: __esri.PortalItem = this.base.results.applicationItem
+      .value;
+    const appProxies =
+      portalItem && portalItem.applicationProxies
+        ? portalItem.applicationProxies
+        : null;
 
-        view.ui.add({
-            component: keyboardBtn,
-            position: "top-left",
-            index: 0
-        });
-        keyboardBtn.addEventListener("click", addFocusToMap);
-        keyboardBtn.focus();
-        keyboardBtn.addEventListener('blur', function blurHandler(e) {
-            e.currentTarget.removeEventListener(e.type, blurHandler);
-            keyboardBtn.focus();
+    const viewContainerNode = document.getElementById("viewContainer");
+    const defaultViewProperties = getConfigViewProperties(config);
+
+    validWebMapItems.forEach(item => {
+      const viewNode = document.createElement("div");
+      viewContainerNode.appendChild(viewNode);
+
+      const container = {
+        container: viewNode
+      };
+
+      const viewProperties = {
+        ...defaultViewProperties,
+        ...container
+      };
+
+      createMapFromItem({ item, appProxies }).then(map =>
+        createView({
+          ...viewProperties,
+          map
+        }).then(view => {
+          findQuery(find, view).then(() => goToMarker(marker, view));
+          this.view = view;
+          this._initMap();
         })
-    }
-});
+      );
+    });
 
-const searchWidget = new Search({
-    view,
-    popupEnabled: true,
-    popupOpenOnSelect: true,
-    autoSelect: true
-});
+    document.body.classList.remove(CSS.loading);
+  }
 
-view.ui.add({
-    component: searchWidget,
-    position: "top-left",
-    index: 0
-});
-
-searchWidget.watch("activeSource", (s) => {
-    const source = searchWidget.activeSource as esri.LocatorSource;
-    if (source) {
-        source.withinViewEnabled = true;
-    }
-});
-
-searchWidget.on("search-start", () => {
-    watchUtils.once(view.popup, "title", () => {
-        view.popup.focus();
-        watchUtils.whenFalseOnce(view.popup, "visible", () => {
-            addFocusToMap();
+  _initMap() {
+    // Add the live node to the view 
+    this.view.ui.add(this.liveNode, "manual");
+    // When user tabs into the app for the first time 
+    // add button to navigate map via keyboard to the ui and focus it
+    let self = this; 
+    document.addEventListener("keydown", function handler(e) {
+        if (e.keyCode === 9) {
+            e.currentTarget.removeEventListener(e.type, handler);
+            const keyboardBtn = document.getElementById("keyboard");
+            keyboardBtn.classList.remove("hidden");
+    
+            self.view.ui.add({
+                component: keyboardBtn,
+                position: "top-left",
+                index: 0
+            });
+            keyboardBtn.addEventListener("click", () => { self._addFocusToMap(self) });
+            keyboardBtn.focus();
+            keyboardBtn.addEventListener('blur', function blurHandler(e) {
+                e.currentTarget.removeEventListener(e.type, blurHandler);
+                keyboardBtn.focus();
+            })
+        }
+    });
+    //const view = this.view;
+    const searchWidget = new Search({
+        view: this.view,
+        popupEnabled: true,
+        //popupOpenOnSelect: true,
+        autoSelect: true
+    });
+    
+    this.view.ui.add({
+        component: searchWidget,
+        position: "top-left",
+        index: 0
+    });
+    
+    searchWidget.watch("activeSource", (s) => {
+        const source = searchWidget.activeSource as esri.LocatorSearchSource;
+        if (source) {
+            source.withinViewEnabled = true; 
+        }
+    });
+    
+    searchWidget.on("search-start", () => {
+        watchUtils.once(this.view.popup, "title", () => {
+            this.view.popup.focus();
+            watchUtils.whenFalseOnce(this.view.popup, "visible", () => {
+                this._addFocusToMap(this);
+            });
         });
     });
-});
-const homeWidget = new Home({
-    view
-});
-view.ui.add(homeWidget, "top-left");
-/** 
- * Get the first layer in the map to use as the layer to query for features
- * that appear within the highlighted graphic
-*/
-view.when(() => {
-    initialExtent = view.extent.clone();
-    view.on("layerview-create", (result) => {
-        let l: esri.FeatureLayer | esri.MapImageLayer;
-        if (result.layerView.layer.type === "feature") {
-            l = result.layer as esri.FeatureLayer;
-            if (l.popupEnabled) {
-                queryLayers.push(result.layerView as esri.FeatureLayerView);
-            }
-        } else if (result.layerView.layer.type === "map-image") {
-            l = result.layerView.layer as esri.MapImageLayer;
-            l.sublayers.forEach(layer => {
-                if (layer.popupTemplate) {
-                    queryLayers.push(layer);
-                }
-            });
-        }
-        // add layer as locator to search widget 
-        searchWidget.sources.push({
-            featureLayer: l,
-            placeholder: `Search ${l.title} layer`,
-            withinViewEnabled: true
-        } as esri.FeatureLayerSource);
-
+    const homeWidget = new Home({
+        view: this.view
     });
+    this.view.ui.add(homeWidget, "top-left");
+    /** 
+     * Get the first layer in the map to use as the layer to query for features
+     * that appear within the highlighted graphic
+    */
+    this.view.when(() => {
+        this.initialExtent = this.view.extent.clone();
+        this.view.on("layerview-create", (result) => {
+            let l: esri.FeatureLayer | esri.MapImageLayer;
+            if (result.layerView.layer.type === "feature") {
+                l = result.layer as esri.FeatureLayer;
+                if (l.popupEnabled) {
+                    this.queryLayers.push(result.layerView as esri.FeatureLayerView);
+                }
+            } else if (result.layerView.layer.type === "map-image") {
+                l = result.layerView.layer as esri.MapImageLayer;
+                l.sublayers.forEach(layer => {
+                    if (layer.popupTemplate) {
+                        this.queryLayers.push(layer);
+                    }
+                });
+            }
+            // add layer as locator to search widget 
+            searchWidget.sources.push({
+                featureLayer: l,
+                placeholder: `Search ${l.title} layer`,
+                withinViewEnabled: true
+            } as esri.FeatureLayerSearchSource);
+    
+        });
+    });
+    
+  }
 
-});
-function setupKeyHandlers() {
-    if (!watchHandler) {
-        watchHandler = watchUtils.pausable(view, "extent", () => {
-            createGraphic(view);
+  _setupKeyHandlers() {
+    if (!this.watchHandler) {
+        this.watchHandler = watchUtils.pausable(this.view, "extent", () => {
+          this._createGraphic(this.view);
         });
     }
     else {
-        watchHandler.resume();
+        this.watchHandler.resume();
     }
-    if (!keyUpHandler) {
+    if (!this.keyUpHandler) {
         /**
          * Handle numeric nav keys 
          */
-        keyUpHandler = view.on("key-up", (keyEvt: any) => {
+        this.keyUpHandler = this.view.on("key-up", (keyEvt: any) => {
 
             const key = keyEvt.key;
-            if (pageResults && pageResults.length && key <= pageResults.length) {
-                displayFeatureInfo(key);
+            if (this.pageResults && this.pageResults.length && key <= this.pageResults.length) {
+              this._displayFeatureInfo(key);
             }
             // not on the first page and more than one page
-            else if (key === "8" && numberOfPages > 1 && currentPage > 1) {
-                currentPage -= 1;
-                generateList();
+            else if (key === "8" && this.numberOfPages > 1 && this.currentPage > 1) {
+              this.currentPage -= 1;
+              this._generateList();
             }
 
             // we have more than one page
-            else if (key === "9" && numberOfPages > 1) {
-                currentPage += 1;
-                generateList();
+            else if (key === "9" && this.numberOfPages > 1) {
+              this.currentPage += 1;
+              this._generateList();
             }
         });
     }
-    if (!keyDownHandler) {
+    if (!this.keyDownHandler) {
         /**
          * Handle info and dir keys 
          */
@@ -186,16 +298,16 @@ function setupKeyHandlers() {
         const worldLocator = new Locator({
             url: "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer"
         });
-        keyDownHandler = view.on("key-down", (keyEvt: any) => {
+        this.keyDownHandler = this.view.on("key-down", (keyEvt: any) => {
             const key = keyEvt.key;
             if (key === "i") {
                 // reverse geocode and display location information
-                const rectExt = view.graphics.getItemAt(0).geometry as esri.Extent;
+                const rectExt = this.view.graphics.getItemAt(0).geometry as esri.Extent;
                 let loc = rectExt.center;
                 worldLocator.locationToAddress(loc, 1000).then((candidate: esri.AddressCandidate) => {
-                    calculateLocation(candidate.attributes);
+                  this._calculateLocation(candidate.attributes);
                 }, (err: Error) => {
-                    liveDirNode.innerHTML = "Unable to calculate location";
+                  this.liveDirNode.innerHTML = "Unable to calculate location";
                 });
             } else if (key === "ArrowUp" || key === "ArrowDown" ||
                 key === "ArrowRight" || key === "ArrowLeft") {
@@ -215,67 +327,84 @@ function setupKeyHandlers() {
                         dir = "west";
                         break;
                 }
-                liveDirNode.innerHTML = `Moving ${dir}.`;
+                this.liveDirNode.innerHTML = `Moving ${dir}.`;
             } else if (key === "h") {
                 /// Go to the view's initial extent 
-                view.goTo(initialExtent);
+                this.view.goTo(this.initialExtent);
             }
         });
     }
-}
-/**
- * Toggles on/off the key handlers for Pop-up boxes based off their visibility
- */
-function popupKeyHandler():void {
-    if(view.popup.visible){
-        (<HTMLElement>view.popup.container).addEventListener('keydown', popupKeyHandlerFunction);
-    } else {
-        (<HTMLElement>view.popup.container).removeEventListener('keydown', popupKeyHandlerFunction);
+    if(!this.extentHandler){
+        //create navigation extent using map's native extent settings
+        const navigationExtent = (this.view.map as WebMap).portalItem.extent;
+        this.extentHandler = this.view.watch('center', (newValue, oldValue, propertyName) => {
+            //if center goes outside extent, then move it back to the original position
+            if( !navigationExtent.contains(newValue) ) {
+                (this.view as MapView).set(propertyName, oldValue); 
+            }
+        });
     }
-}
-/**
- * Adds key handlers to Pop-up boxes 
- * @param keyEvt
- */
-function popupKeyHandlerFunction(keyEvt: any): void {
+  }
+
+  /**
+   * Toggles on/off the key handlers for Pop-up boxes based off their visibility
+   */
+  _popupKeyHandler():void {
+    if(this.view.popup.visible){
+        (<HTMLElement>this.view.popup.container).addEventListener('keydown', (keyEvt) => { this._popupKeyHandlerFunction(this, keyEvt) });
+    } else {
+        (<HTMLElement>this.view.popup.container).removeEventListener('keydown', (keyEvt) => { this._popupKeyHandlerFunction(this, keyEvt) });
+    }
+  }
+  /**
+  * Adds key handlers to Pop-up boxes 
+  * @param keyEvt
+  */
+  _popupKeyHandlerFunction(self: any, keyEvt: any): void {
     const key = keyEvt.key;
     if (key === "Escape") {
-        view.popup.close();
+      self.view.popup.close();
     }
-}
-/**
- * Clean up the highlight graphic and feature list if the map loses 
- * focus and the popup isn't visible
- */
-function cleanUp(): void {
-    if (view.popup.visible) {
+  }
+
+  /**
+   * Clean up the highlight graphic and feature list if the map loses 
+   * focus and the popup isn't visible
+   */
+  _cleanUp(): void {
+    if (this.view.popup.visible) {
         return;
     }
 
-    liveNode.classList.add("hidden");
+    this.liveNode.classList.add("hidden");
 
 
-    liveDetailsNode.innerHTML = null;
-    liveDirNode.innerHTML = null;
-    view.graphics.removeAll();
-    if (watchHandler) {
-        watchHandler.pause();
+    this.liveDetailsNode.innerHTML = null;
+    this.liveDirNode.innerHTML = null;
+    this.view.graphics.removeAll();
+    if (this.watchHandler) {
+      this.watchHandler.pause();
     }
 
-    if (keyDownHandler) {
-        keyDownHandler.remove();
-        keyDownHandler = null;
+    if (this.keyDownHandler) {
+      this.keyDownHandler.remove();
+      this.keyDownHandler = null;
     }
-    if (keyUpHandler) {
-        keyUpHandler.remove();
-        keyUpHandler = null;
+    if (this.keyUpHandler) {
+      this.keyUpHandler.remove();
+      this.keyUpHandler = null;
     }
-}
-/**
- *  Add a highlight graphic to the map and use it to navigate/query content
- * @param view  
- */
-function createGraphic(view: MapView): void {
+    if (this.extentHandler) {
+        this.extentHandler.remove();
+        this.extentHandler = null;
+    }
+  }
+
+  /**
+   *  Add a highlight graphic to the map and use it to navigate/query content
+   * @param view  
+   */
+  _createGraphic(view: MapView | esri.SceneView): void {
     view.graphics.removeAll();
     view.popup.visible = false;
 
@@ -301,49 +430,55 @@ function createGraphic(view: MapView): void {
     });
 
     view.graphics.add(graphic);
-    if (queryLayers && queryLayers.length > 0) {
-        queryFeatures(graphic.geometry as esri.Extent);
+    if (this.queryLayers && this.queryLayers.length > 0) {
+      this._queryFeatures(graphic.geometry as esri.Extent);
     }
-}
-/**
- *  Query the feature layer to get the features within the highlighted area 
- * currently setup for just the first layer in web map
- * @param queryGraphic Extent graphic used drawn on the map and used to select features
- */
-function queryFeatures(queryGeometry: esri.Extent): void {
-    queryResults = [];
-    pageResults = null;
-    currentPage = 1;
-    promiseUtils.eachAlways(queryLayers.map((layerView) => {
+  }
+
+  /**
+   *  Query the feature layer to get the features within the highlighted area 
+   * currently setup for just the first layer in web map
+   * @param queryGraphic Extent graphic used drawn on the map and used to select features
+   */
+  _queryFeatures(queryGeometry: esri.Extent): void {
+    this.queryResults = [];
+    this.pageResults = null;
+    this.currentPage = 1;
+    promiseUtils.eachAlways(this.queryLayers.map((layerView) => {
         // if (layerView.layer.type && layerView.layer.type === "map-image") {
         const flQuery = layerView.layer.createQuery();
         flQuery.geometry = queryGeometry;
         flQuery.returnGeometry = true;
         flQuery.outFields = ["*"];
         flQuery.spatialRelationship = "intersects";
+        //For SceneView
+        if(this.view.type == "3d"){
+            layerView = layerView.layer;
+        }
         return layerView.queryFeatures(flQuery).then((queryResults: esri.FeatureSet | Graphic[]) => {
             return queryResults;
         });
     })).then((results: esri.EachAlwaysResult[]) => {
-        queryResults = [];
+      this.queryResults = [];
         results.forEach(result => {
             if (result && result.value && result.value.features) {
                 result.value.features.forEach((val: Graphic) => {
-                    queryResults.push(val);
+                  this.queryResults.push(val);
                 });
             }
         });
-        numberOfPages = Math.ceil(queryResults.length / numberPerPage);
-        liveDetailsNode.innerHTML = "";
-        if (queryResults.length && queryResults.length > 21) {
-            liveDetailsNode.innerHTML = queryResults.length + " results found in search area. Press the plus key to zoom in and reduce number of results.";
+        this.numberOfPages = Math.ceil(this.queryResults.length / this.numberPerPage);
+        this.liveDetailsNode.innerHTML = "";
+        if (this.queryResults.length && this.queryResults.length > 21) {
+          this.liveDetailsNode.innerHTML = this.queryResults.length + " results found in search area. Press the plus key to zoom in and reduce number of results.";
         } else {
-            generateList();
+          this._generateList();
         }
 
     });
-}
-function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean): void {
+  }
+
+  _updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean): void {
     let updateContent: string;
     if (displayResults && displayResults.length > 0) {
         let updateValues: string[] = displayResults.map((graphic: Graphic, index: number) => {
@@ -376,32 +511,32 @@ function updateLiveInfo(displayResults: Graphic[], prev: boolean, next: boolean)
         updateContent = "No features found";
     }
 
-    liveDetailsNode.innerHTML = updateContent;
-    liveNode.setAttribute("aria-busy", "false");
+    this.liveDetailsNode.innerHTML = updateContent;
+    this.liveNode.setAttribute("aria-busy", "false");
+  }
 
-}
-/**
- * Generate a page of content for the currently highlighted area
- */
-function generateList(): void {
-    const begin = ((currentPage - 1) * numberPerPage);
-    const end = begin + numberPerPage;
-    pageResults = queryResults.slice(begin, end);
+  /**
+  * Generate a page of content for the currently highlighted area
+  */
+  _generateList(): void {
+    const begin = ((this.currentPage - 1) * this.numberPerPage);
+    const end = begin + this.numberPerPage;
+    this.pageResults = this.queryResults.slice(begin, end);
 
     // Get page status  
-    const prevDisabled = currentPage === 1; // don't show 8
-    const nextDisabled = currentPage === numberOfPages; // don't show 9
-    liveNode.setAttribute("aria-busy", "true");
-    updateLiveInfo(pageResults, !prevDisabled, !nextDisabled);
-}
+    const prevDisabled = this.currentPage === 1; // don't show 8
+    const nextDisabled = this.currentPage === this.numberOfPages; // don't show 9
+    this.liveNode.setAttribute("aria-busy", "true");
+    this._updateLiveInfo(this.pageResults, !prevDisabled, !nextDisabled);
+  }
 
-/**
- * Display popup for selected feature 
- * @param key number key pressed to identify selected feature
- */
-function displayFeatureInfo(key: number): void {
+  /**
+  * Display popup for selected feature 
+  * @param key number key pressed to identify selected feature
+  */
+  _displayFeatureInfo(key: number): void {
 
-    const selectedGraphic = pageResults[key - 1];
+    const selectedGraphic = this.pageResults[key - 1];
 
     if (selectedGraphic) {
         let location: esri.Point;
@@ -410,85 +545,66 @@ function displayFeatureInfo(key: number): void {
         } else if (selectedGraphic.geometry.extent && selectedGraphic.geometry.extent.center) {
             location = selectedGraphic.geometry.extent.center;
         }
-        liveDetailsNode.innerHTML = "Displaying content for selected feature. Press <strong>esc</strong> to close.";
-        view.popup.open({
+        this.liveDetailsNode.innerHTML = "Displaying content for selected feature. Press <strong>esc</strong> to close.";
+        this.view.popup.open({
             location: location,
             features: [selectedGraphic]
         });
-        watchUtils.whenTrueOnce(view.popup, "visible", () => { 
-            view.popup.focus(); 
-            popupKeyHandler();
+        watchUtils.whenTrueOnce(this.view.popup, "visible", () => { 
+          this.view.popup.focus(); 
+          this._popupKeyHandler();
         })
-        watchUtils.whenFalseOnce(view.popup, "visible", () => {
-            addFocusToMap();
-            popupKeyHandler();
+        watchUtils.whenFalseOnce(this.view.popup, "visible", () => {
+          this._addFocusToMap(this);
+          this._popupKeyHandler();
         });
     }
-}
-function addFocusToMap() {
+  }
 
+  _addFocusToMap(self: any) : void {
     document.getElementById("intro").innerHTML = `Use the arrow keys to navigate the map and find features. Use the plus (+) key to zoom in to the map and the minus (-) key to zoom out.
         For details on your current area press the i key. Press the h key to return to the  starting map location.`
 
     window.addEventListener("mousedown", (keyEvt: any) => {
-        // Don't show the feature list unless tab is pressed. 
-        // prevent default for text box so search works
         if (keyEvt.key !== "Tab") {
             if (keyEvt.target.type !== "text") {
                 keyEvt.preventDefault();
-                cleanUp();
+                self._cleanUp();
             }
         }
     });
-
-    view.watch("focused", () => {
-        if (view.focused) {
-            liveNode.classList.remove("hidden");
-            createGraphic(view);
-            setupKeyHandlers();
+    self.view.watch("focused", () => {
+        if (self.view.focused) {
+          self.liveNode.classList.remove("hidden");
+          self._createGraphic(self.view);
+          self._setupKeyHandlers();
         } else {
-            cleanUp();
+          self._cleanUp();
         }
-
     });
-    view.focus();
+    self.view.focus();
 }
 
-function calculateLocation(address: any) {
-
+  _calculateLocation(address: any) {
     let displayValue;
-    if (view.scale > 12000000) {
+    if (this.view.scale > 12000000) {
         displayValue = address.CountryCode || address.Subregion;
     }
-    else if (view.scale > 3000000) {
+    else if (this.view.scale > 3000000) {
         displayValue = address.Region || address.Subregion;
     }
-    else if (view.scale > 160000) {
+    else if (this.view.scale > 160000) {
         displayValue = address.City || address.Region || address.Subregion;
     }
-    else if (view.scale > 40000) {
+    else if (this.view.scale > 40000) {
         displayValue = address.Neighborhood || address.Address;
     }
     else {
         displayValue = address.Match_addr || address.Address;
     }
-    console.log("display", displayValue);
-    liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
+    this.liveDirNode.innerHTML = `Currently searching near ${displayValue}`;
+  } 
+
 }
 
-/*
-* If user chooses to limit the navigation area, then this creates a listener 
-* for movement on view that tests if the new center is within the extent window
-*/
-if(limitNav){
-    view.when(function(){
-        //create navigation extent using map's native extent settings
-        const navigationExtent = map.portalItem.extent;
-        view.watch('center', function(newValue, oldValue, propertyName) {
-            //if center goes outside extent, then move it back to the original position
-            if( !navigationExtent.contains(newValue) ) {
-                view.set(propertyName, oldValue); 
-            }
-        });
-    });
-}
+export = A11yMap;
