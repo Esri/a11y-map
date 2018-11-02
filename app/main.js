@@ -42,6 +42,7 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
             //  Properties
             //
             //--------------------------------------------------------------------------
+            this.config = null; //how to use ApplicationConfig type? 
             this.queryLayers = [];
             this.initialExtent = null;
             this.liveNode = document.getElementById("liveViewInfo");
@@ -71,6 +72,7 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
             var config = base.config, results = base.results, settings = base.settings;
             var find = config.find, marker = config.marker;
             var webMapItems = results.webMapItems;
+            this.config = config;
             var validWebMapItems = webMapItems.map(function (response) {
                 return response.value;
             });
@@ -81,6 +83,8 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
             }
             config.title = !config.title ? itemUtils_1.getItemTitle(firstItem) : "";
             domHelper_1.setPageTitle(config.title);
+            //change page h1 to match page title
+            document.getElementById('a11y-h1').innerText = config.title;
             var portalItem = this.base.results.applicationItem
                 .value;
             var appProxies = portalItem && portalItem.applicationProxies
@@ -190,16 +194,17 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
                     });
                 });
                 // Add a legend when the map view loads
-                var featureLayer = _this.view.map.layers.getItemAt(0); // Grab the first layer from the webmap
-                console.log(featureLayer);
-                var legend = new Legend({
-                    container: "legendDiv",
-                    view: _this.view,
-                });
-                _this.view.ui.add({
-                    component: legend,
-                    position: "top-right" //how do i make this configurable
-                });
+                if (_this.config.legend) {
+                    var featureLayer = _this.view.map.layers.getItemAt(0); // Grab the first layer from the webmap
+                    var legend = new Legend({
+                        container: "legendDiv",
+                        view: _this.view
+                    });
+                    _this.view.ui.add({
+                        component: legend,
+                        position: _this.config.legendPosition
+                    });
+                }
             });
         };
         //ADD FUNCTIONS HERE
