@@ -22,6 +22,8 @@
 
 import ApplicationBase = require("ApplicationBase/ApplicationBase");
 
+import ApplicationConfig = require("ApplicationBase/interfaces");
+
 import i18n = require("dojo/i18n!./nls/resources");
 
 const CSS = {
@@ -58,6 +60,8 @@ import Search = require("esri/widgets/Search");
 import Home = require("esri/widgets/Home");
 import Locator = require("esri/tasks/Locator");
 
+import Legend = require("esri/widgets/Legend");
+
 import esri = __esri;
 
 class A11yMap {
@@ -67,6 +71,8 @@ class A11yMap {
   //
   //--------------------------------------------------------------------------
 
+  config: any = null; //how to use ApplicationConfig type? 
+  
   watchHandler: esri.PausableWatchHandle;
   keyDownHandler: IHandle;
   keyUpHandler: IHandle;
@@ -115,6 +121,8 @@ class A11yMap {
     const { find, marker } = config;
     const { webMapItems } = results;
 
+    this.config = config;
+
     const validWebMapItems = webMapItems.map(response => {
       return response.value;
     });
@@ -128,6 +136,8 @@ class A11yMap {
 
     config.title = !config.title ? getItemTitle(firstItem) : "";
     setPageTitle(config.title);
+    //change page h1 to match page title
+    document.getElementById('a11y-h1').innerText = config.title;
 
     const portalItem: __esri.PortalItem = this.base.results.applicationItem
       .value;
@@ -178,7 +188,7 @@ class A11yMap {
             e.currentTarget.removeEventListener(e.type, handler);
             const keyboardBtn = document.getElementById("keyboard");
             keyboardBtn.classList.remove("hidden");
-    
+            
             self.view.ui.add({
                 component: keyboardBtn,
                 position: "top-left",
@@ -254,6 +264,20 @@ class A11yMap {
             } as esri.FeatureLayerSearchSource);
     
         });
+        
+        // Add a legend when the map view loads
+        if (this.config.legend) {
+            const featureLayer = this.view.map.layers.getItemAt(0); // Grab the first layer from the webmap
+            const legend = new Legend({
+                container: "legendDiv",
+                view: this.view
+            });
+            this.view.ui.add({
+                component: legend,
+                position: this.config.legendPosition
+            });
+        }
+
     });
     
   }

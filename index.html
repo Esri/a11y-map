@@ -16,9 +16,14 @@
         require(["Application/init"]);
     </script>
 </head>
-
+    
 <body class="configurable-application--loading">
-    <div id="viewContainer" class="configurable-application__view-container"></div>
+    <div id="viewContainer" class="configurable-application__view-container" role="application">
+      <h1 id="a11y-h1" class="offscreen">a11y Map</h1>
+      <div id="legendDiv" tabindex="0">
+        <h2 class="offscreen">Map legend layers:</h2>
+      </div>
+    </div>
     <div aria-describedby="intro" id="liveViewInfo" class="hidden live-info" role="navigation">
       <div aria-live="polite" role="status">
           <p id="intro"></p>

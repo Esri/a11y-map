@@ -30,7 +30,7 @@ var __assign = (this && this.__assign) || function () {
     };
     return __assign.apply(this, arguments);
 };
-define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationBase/support/domHelper", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home", "esri/tasks/Locator"], function (require, exports, itemUtils_1, domHelper_1, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home, Locator) {
+define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationBase/support/domHelper", "esri/core/watchUtils", "esri/core/promiseUtils", "esri/Graphic", "esri/geometry/Extent", "esri/symbols/SimpleFillSymbol", "esri/widgets/Search", "esri/widgets/Home", "esri/tasks/Locator", "esri/widgets/Legend"], function (require, exports, itemUtils_1, domHelper_1, watchUtils, promiseUtils, Graphic, Extent, SimpleFillSymbol, Search, Home, Locator, Legend) {
     "use strict";
     var CSS = {
         loading: "configurable-application--loading"
@@ -42,6 +42,7 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
             //  Properties
             //
             //--------------------------------------------------------------------------
+            this.config = null; //how to use ApplicationConfig type? 
             this.queryLayers = [];
             this.initialExtent = null;
             this.liveNode = document.getElementById("liveViewInfo");
@@ -70,6 +71,7 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
             var config = base.config, results = base.results, settings = base.settings;
             var find = config.find, marker = config.marker;
             var webMapItems = results.webMapItems;
+            this.config = config;
             var validWebMapItems = webMapItems.map(function (response) {
                 return response.value;
             });
@@ -80,6 +82,8 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
             }
             config.title = !config.title ? itemUtils_1.getItemTitle(firstItem) : "";
             domHelper_1.setPageTitle(config.title);
+            //change page h1 to match page title
+            document.getElementById('a11y-h1').innerText = config.title;
             var portalItem = this.base.results.applicationItem
                 .value;
             var appProxies = portalItem && portalItem.applicationProxies
@@ -188,6 +192,18 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
                         withinViewEnabled: true
                     });
                 });
+                // Add a legend when the map view loads
+                if (_this.config.legend) {
+                    var featureLayer = _this.view.map.layers.getItemAt(0); // Grab the first layer from the webmap
+                    var legend = new Legend({
+                        container: "legendDiv",
+                        view: _this.view
+                    });
+                    _this.view.ui.add({
+                        component: legend,
+                        position: _this.config.legendPosition
+                    });
+                }
             });
         };
         A11yMap.prototype._setupKeyHandlers = function () {
