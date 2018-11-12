@@ -60,7 +60,6 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
         //--------------------------------------------------------------------------
         A11yMap.prototype.init = function (base) {
             var _this = this;
-            console.log("init");
             if (!base) {
                 console.error("ApplicationBase is not defined");
                 return;
@@ -191,7 +190,6 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
                 });
             });
         };
-        //ADD FUNCTIONS HERE
         A11yMap.prototype._setupKeyHandlers = function () {
             var _this = this;
             if (!this.watchHandler) {
@@ -267,6 +265,16 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
                     }
                 });
             }
+            if (!this.extentHandler) {
+                //create navigation extent using map's native extent settings
+                var navigationExtent_1 = this.view.map.portalItem.extent;
+                this.extentHandler = this.view.watch('center', function (newValue, oldValue, propertyName) {
+                    //if center goes outside extent, then move it back to the original position
+                    if (!navigationExtent_1.contains(newValue)) {
+                        _this.view.set(propertyName, oldValue);
+                    }
+                });
+            }
         };
         /**
          * Toggles on/off the key handlers for Pop-up boxes based off their visibility
@@ -312,6 +320,10 @@ define(["require", "exports", "ApplicationBase/support/itemUtils", "ApplicationB
             if (this.keyUpHandler) {
                 this.keyUpHandler.remove();
                 this.keyUpHandler = null;
+            }
+            if (this.extentHandler) {
+                this.extentHandler.remove();
+                this.extentHandler = null;
             }
         };
         /**
