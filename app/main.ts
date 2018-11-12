@@ -76,6 +76,7 @@ class A11yMap {
   watchHandler: esri.PausableWatchHandle;
   keyDownHandler: IHandle;
   keyUpHandler: IHandle;
+  extentHandler: esri.WatchHandle;
 
   queryLayers: any[] = [];
 
@@ -107,7 +108,6 @@ class A11yMap {
   //--------------------------------------------------------------------------
 
   public init(base: ApplicationBase): void {
-      console.log("init")
     if (!base) {
       console.error("ApplicationBase is not defined");
       return;
@@ -277,10 +277,11 @@ class A11yMap {
                 position: this.config.legendPosition
             });
         }
+
     });
+    
   }
 
-  //ADD FUNCTIONS HERE
   _setupKeyHandlers() {
     if (!this.watchHandler) {
         this.watchHandler = watchUtils.pausable(this.view, "extent", () => {
@@ -357,6 +358,16 @@ class A11yMap {
             }
         });
     }
+    if(!this.extentHandler){
+        //create navigation extent using map's native extent settings
+        const navigationExtent = (this.view.map as WebMap).portalItem.extent;
+        this.extentHandler = this.view.watch('center', (newValue, oldValue, propertyName) => {
+            //if center goes outside extent, then move it back to the original position
+            if( !navigationExtent.contains(newValue) ) {
+                (this.view as MapView).set(propertyName, oldValue); 
+            }
+        });
+    }
   }
 
   /**
@@ -406,6 +417,10 @@ class A11yMap {
     if (this.keyUpHandler) {
       this.keyUpHandler.remove();
       this.keyUpHandler = null;
+    }
+    if (this.extentHandler) {
+        this.extentHandler.remove();
+        this.extentHandler = null;
     }
   }
 
