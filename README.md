@@ -14,9 +14,9 @@ To see the a11y features tab into the map and you'll see that a **megaphone icon
 * To learn more about the direction the box is moving and current location press the i button
 
 ## Default Map Navigation 
-This application uses version 4.x of the ArcGIS API for JavaScript which supports the following keyboard navigation for 2D maps. 
+This application uses version 4.x of the ArcGIS API for JavaScript which supports the following keyboard navigation for maps. 
 
-| Action      | 2D Map behavior                                |
+| Action      |  Map behavior                                |
 |-------------|-------------------------------------------------|
 | Arrow Keys  | Nudge the map to the left, right, up or down    |
 | N           | Adjust the map to point North                   |
@@ -24,17 +24,6 @@ This application uses version 4.x of the ArcGIS API for JavaScript which support
 | D           | Rotate the map clockwise                        |
 | +           | Incrementally zoom in at the center of the map  |
 | -           | Incrementally zoom out at the center of the map |
-
-
-The following keyboard navigation is supported for 3D maps
-
-| Action     | 3d Map behavior                                                         |
-|------------|-------------------------------------------------------------------------|
-| Arrow keys | Nudge the map to the left, right, up or down                            |
-| P          | Move the camera to look perpindicular to the data displayed in the map. |
-| N          | Adjust the map to point North                                           |
-| J          | Move down                                                               |
-| U          | Move up                                                                 |
 
 
 At this point this is just a prototype app and feedback and comments are greatly appreciated. 
