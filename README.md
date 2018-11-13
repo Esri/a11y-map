@@ -7,11 +7,34 @@ A prototype app to test adding keyboard interaction (similar to Google's a11y be
 ![App](a11y-map.png)
 
 ## Features
-To see the a11y features tab into the map and you'll see that a megaphone icon is visible. Once you activate this icon you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard. 
+To see the a11y features tab into the map and you'll see that a **megaphone icon** is visible. Once you activate this icon you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard. 
 * Use the arrow keys to move around the map
 * Use the +/- keys to zoom in and out of the map
 * To learn more about one of the features wihin the selection box press the associated number key. 
 * To learn more about the direction the box is moving and current location press the i button
+
+## Default Map Navigation 
+This application uses version 4.x of the ArcGIS API for JavaScript which supports the following keyboard navigation for 2D maps. 
+
+| Action      | MapView behavior                                |
+|-------------|-------------------------------------------------|
+| Arrow Keys  | Nudge the map to the left, right, up or down    |
+| N           | Adjust the map to point North                   |
+| A           | Rotate the map counterclockwise                 |
+| D           | Rotate the map clockwise                        |
+| +           | Incrementally zoom in at the center of the map  |
+| -           | Incrementally zoom out at the center of the map |
+
+
+The following keyboard navigation is supported for 3D maps
+
+| Action     | 3d Map behavior                                                         |
+|------------|-------------------------------------------------------------------------|
+| Arrow keys | Nudge the map to the left, right, up or down                            |
+| P          | Move the camera to look perpindicular to the data displayed in the map. |
+| N          | Adjust the map to point North                                           |
+| J          | Move down                                                               |
+| U          | Move up                                                                 |
 
 
 At this point this is just a prototype app and feedback and comments are greatly appreciated. 
@@ -24,7 +47,9 @@ Another interesting app that shows navigating content in an accessible manner is
 
 ## Instructions
 
-Tab into the map to activate the extent search and display results. Once in the map you can use the arrow keys to move right, left, up or down in the map. Use - to zoom in and + to zoom out. While the location dialog is active press i for more details about the area. Under the hood pressing i does a reverse geocode to find the address for the center of the query box. 
+To see the a11y features tab into the map and you'll see that a **megaphone icon** is visible. Once you activate this icon you'll see an extent graphic and feature list are added to the map to allow users to navigate the map content via the keyboard.
+Once in the map you can use the arrow keys to move right, left, up or down in the map. Use - to zoom in and + to zoom out. While the location dialog is active press i for more details about the area. Under the hood pressing i does a reverse geocode to find the address for the center of the query box. 
+Alternatively you can use the Search box to search for a location and then navigate the map via the drawn box on the map.
 
 ## Requirements
 
