@@ -16,7 +16,7 @@ To see the a11y features tab into the map and you'll see that a **megaphone icon
 ## Default Map Navigation 
 This application uses version 4.x of the ArcGIS API for JavaScript which supports the following keyboard navigation for 2D maps. 
 
-| Action      | MapView behavior                                |
+| Action      | 2D Map behavior                                |
 |-------------|-------------------------------------------------|
 | Arrow Keys  | Nudge the map to the left, right, up or down    |
 | N           | Adjust the map to point North                   |
