@@ -40,6 +40,13 @@ To see the a11y features tab into the map and you'll see that a **megaphone icon
 Once in the map you can use the arrow keys to move right, left, up or down in the map. Use - to zoom in and + to zoom out. While the location dialog is active press i for more details about the area. Under the hood pressing i does a reverse geocode to find the address for the center of the query box. 
 Alternatively you can use the Search box to search for a location and then navigate the map via the drawn box on the map.
 
+
+## Installation
+
+1. Install [node and npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+2. Open a command prompt and navigate to the folder where you've copied the a11y-map files 
+3. Run npm install 
+
 ## Requirements
 
 * Your favorite IDE
